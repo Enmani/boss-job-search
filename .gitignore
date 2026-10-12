@@ -1,0 +1,12 @@
+node_modules/
+data/
+runtime/
+work/
+dist/
+*.sqlite*
+*.log
+*.local.json
+.env*
+bridge/config.json
+bridge/host.json
+bridge/host-state.json
