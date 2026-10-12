@@ -1,0 +1,9 @@
+{
+  "name": "boss-job-search-development",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "precheck": "node --test tests/*.test.mjs"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,10 @@
+{
+  "name": "boss-job-search-local",
+  "interface": { "displayName": "BOSS 求职本机插件" },
+  "plugins": [{
+    "name": "boss-job-search",
+    "source": { "source": "local", "path": "./plugin" },
+    "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+    "category": "Productivity"
+  }]
+}
