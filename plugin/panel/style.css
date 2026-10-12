@@ -1,0 +1,75 @@
+:root {
+  color-scheme:light;
+  --background:#fff;--surface:#f6f6f6;--foreground:#202020;--muted:#616161;--border:#d6d6d6;
+  --accent:#9b3860;--accent-foreground:#fff;--accent-surface:#fde3ef;--error:#a12424;
+  --text-small:.875rem;--text-body:1rem;--text-heading:1.25rem;--text-title:2rem;
+  --space-1:.25rem;--space-2:.5rem;--space-3:.75rem;--space-4:1rem;--space-6:1.5rem;--space-8:2rem;--space-12:3rem;
+  --radius-small:.5rem;--radius-large:.75rem;--control-height:2.75rem;--line:1px;--focus:3px;
+  --max-width:76rem;--dialog-width:48rem;--dialog-height:88vh;--card-min:17rem;--label-min:10rem;
+  --weight:600;--body-leading:1.5;--heading-leading:1.25;--transition:150ms;
+}
+:root[data-theme="dark"] {
+  color-scheme:dark;--background:#0d0d0d;--surface:#1c1c1c;--foreground:#f3f3f3;--muted:#b0b0b0;
+  --border:#454545;--accent:#f2aed0;--accent-foreground:#202020;--accent-surface:#462134;--error:#ffb2b2;
+}
+* {box-sizing:border-box;}
+body {margin:0;background:var(--background);color:var(--foreground);font:var(--text-body)/var(--body-leading) "Segoe UI",system-ui,sans-serif;}
+main {max-width:var(--max-width);margin:auto;padding:var(--space-12) var(--space-6);}
+h1,h2,h3,p {margin:0 0 var(--space-4);overflow-wrap:anywhere;}
+h1 {font-size:var(--text-title);line-height:var(--heading-leading);}
+h2,h3 {font-size:var(--text-heading);line-height:var(--heading-leading);}
+.eyebrow,.muted,footer {color:var(--muted);font-size:var(--text-small);}
+.eyebrow {margin-bottom:var(--space-2);}
+.page-header,.section-header,.dialog-header,.connection,.job-actions,.pagination,.tabs {display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;}
+.page-header,.section-header,.dialog-header {justify-content:space-between;}
+.connection {margin:var(--space-4) 0 var(--space-8);}
+.connection span {margin-right:auto;color:var(--muted);font-size:var(--text-small);}
+section,footer {margin-top:var(--space-8);}
+.surface {background:var(--surface);border-radius:var(--radius-large);padding:var(--space-6);}
+.surface section {margin-top:var(--space-4);}
+button,input,select,textarea,.button {font:inherit;color:inherit;min-width:0;border:var(--line) solid var(--border);border-radius:var(--radius-small);background:var(--background);}
+button,.button {display:inline-flex;align-items:center;justify-content:center;min-height:var(--control-height);padding:var(--space-2) var(--space-4);cursor:pointer;text-decoration:none;white-space:normal;}
+input,select {min-height:var(--control-height);padding:var(--space-2) var(--space-3);width:100%;}
+textarea {width:100%;padding:var(--space-3);resize:vertical;}
+button:hover,.button:hover {border-color:var(--accent);}
+.primary {background:var(--accent);border-color:var(--accent);color:var(--accent-foreground);}
+button:disabled {opacity:.55;cursor:wait;}
+:focus-visible {outline:var(--focus) solid var(--accent);outline-offset:var(--space-1);}
+label {display:grid;gap:var(--space-2);min-width:0;}
+.form-grid,.filters {display:flex;gap:var(--space-4);align-items:end;flex-wrap:wrap;}
+.form-grid label,.filters label {flex:1 1 var(--label-min);}
+.form-grid .wide,.filters .wide {flex:2 1 var(--card-min);}
+.form-grid>button,.filters>button {flex:0 0 auto;}
+.filters {margin:var(--space-4) 0;}
+details {margin-top:var(--space-4);}
+summary {cursor:pointer;min-height:var(--control-height);padding:var(--space-2) 0;}
+#boards-form button,#progress-form button {margin-top:var(--space-3);}
+#scope {margin:var(--space-3) 0 0;}
+#search-result {margin-top:var(--space-3);}
+#notice,#dialog-notice {padding:var(--space-3);background:var(--accent-surface);border-radius:var(--radius-small);}
+.error {color:var(--error);}
+.tabs button[aria-pressed="true"] {color:var(--accent);border-color:var(--accent);background:var(--accent-surface);}
+.job-list {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--card-min)),1fr));gap:var(--space-4);}
+.job-card {border:var(--line) solid var(--border);border-radius:var(--radius-large);padding:var(--space-4);min-width:0;}
+.job-card h3 {margin-bottom:var(--space-2);}
+.job-card p {margin-bottom:var(--space-2);}
+.job-card button {margin-top:var(--space-2);}
+.tag {display:inline-block;font-size:var(--text-small);color:var(--muted);margin-right:var(--space-3);}
+.kanban {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--card-min)),1fr));gap:var(--space-4);align-items:start;}
+.kanban-column {background:var(--surface);padding:var(--space-4);border-radius:var(--radius-large);min-width:0;}
+.kanban-column .job-card {margin-top:var(--space-3);background:var(--background);}
+.empty {padding:var(--space-8) var(--space-4);color:var(--muted);text-align:center;}
+.pagination {justify-content:end;margin-top:var(--space-4);}
+dialog {width:min(var(--dialog-width),calc(100% - var(--space-8)));max-height:var(--dialog-height);padding:var(--space-6);border:var(--line) solid var(--border);border-radius:var(--radius-large);background:var(--background);color:var(--foreground);overflow:auto;}
+dialog::backdrop {background:rgb(0 0 0 / .5);}
+.dialog-header {align-items:start;}
+.dialog-header h2 {flex:1;}
+.job-actions {margin-bottom:var(--space-4);}
+.description {white-space:pre-wrap;overflow-wrap:anywhere;margin-top:var(--space-6);}
+#progress-form label {margin-top:var(--space-3);}
+#history {padding-left:var(--space-6);}
+#history li {margin-bottom:var(--space-4);overflow-wrap:anywhere;}
+.assessment {border-left:var(--focus) solid var(--accent);padding-left:var(--space-4);}
+[hidden] {display:none !important;}
+@media (max-width:40rem) {main {padding:var(--space-8) var(--space-4);} .surface {padding:var(--space-4);} .filters,.form-grid {gap:var(--space-3);}dialog {padding:var(--space-4);}}
+@media (prefers-reduced-motion:no-preference) {button,.button {transition:background var(--transition),border-color var(--transition);}}

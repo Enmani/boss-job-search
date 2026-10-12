@@ -2,10 +2,11 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { TaskError, jobSchema, preferencesSchema, assessmentSchema, validateEvidence, statuses } from './domain.mjs';
+import { TaskError, jobSchema, preferencesSchema, assessmentSchema, validateEvidence, statuses, boardsSchema } from './domain.mjs';
 
 const now = () => new Date().toISOString();
 const parse = row => row ? JSON.parse(row.payload) : null;
+const content = ({source,...fields}) => JSON.stringify(fields);
 
 export class Store {
   constructor(directory) {
@@ -13,7 +14,7 @@ export class Store {
     this.db = new DatabaseSync(join(directory, 'jobs.sqlite'));
     this.db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
     const version = this.db.prepare('PRAGMA user_version').get().user_version;
-    if (version > 1) { this.db.close(); throw new TaskError('NEWER_DATABASE', '数据来自较新版本，请先更新插件。'); }
+    if (version > 2) { this.db.close(); throw new TaskError('NEWER_DATABASE', '数据来自较新版本，请先更新插件。'); }
     if (version === 0) this.db.exec(`
       BEGIN IMMEDIATE;
       CREATE TABLE resumes (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
@@ -28,6 +29,23 @@ export class Store {
       PRAGMA user_version=1;
       COMMIT;
     `);
+    if(version < 2) {
+      try {
+        if(version === 1) {
+          const backups=join(directory,'backups');mkdirSync(backups,{recursive:true});
+          this.backup(join(backups,`pre-v0.2-${randomUUID()}.sqlite`));
+        }
+        this.transaction(() => {
+          this.db.exec('ALTER TABLE jobs ADD COLUMN platform TEXT; ALTER TABLE jobs ADD COLUMN identity_key TEXT;');
+          for(const row of this.db.prepare('SELECT id,payload FROM jobs').all()) {
+            const job=jobSchema.parse(parse(row));
+            this.db.prepare('UPDATE jobs SET payload=?,url=?,platform=?,identity_key=? WHERE id=?')
+              .run(JSON.stringify(job),job.url,job.platform,this.identity(job),row.id);
+          }
+          this.db.exec('CREATE UNIQUE INDEX jobs_identity ON jobs(identity_key); CREATE INDEX jobs_platform ON jobs(platform); PRAGMA user_version=2;');
+        });
+      } catch(error) {this.db.close();throw error;}
+    }
   }
   close() { this.db.close(); }
   transaction(action) {
@@ -41,6 +59,13 @@ export class Store {
     this.db.prepare("INSERT INTO settings VALUES ('preferences',?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload").run(JSON.stringify(preferences));
     return preferences;
   }
+  boards() {return parse(this.db.prepare("SELECT payload FROM settings WHERE key='greenhouse_boards'").get()) ?? [];}
+  setBoards(input) {
+    const boards=boardsSchema.parse(input);
+    this.db.prepare("INSERT INTO settings VALUES ('greenhouse_boards',?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload").run(JSON.stringify(boards));
+    return boards;
+  }
+  identity(job) {return `${job.platform}:${job.boardToken}:${job.platformJobId}`;}
   addResume(resume) {
     const value = { ...resume, id: randomUUID(), importedAt: now() };
     this.db.prepare('INSERT INTO resumes VALUES (?,?)').run(value.id, JSON.stringify(value));
@@ -55,14 +80,14 @@ export class Store {
   upsertJobs(inputs) {
     const jobs = inputs.map(value => jobSchema.parse(value));
     return this.transaction(() => jobs.map(job => {
-      const row = this.db.prepare('SELECT * FROM jobs WHERE url=?').get(job.url);
+      const row = this.db.prepare('SELECT * FROM jobs WHERE identity_key=?').get(this.identity(job));
       const time = now();
       if (row) {
         const old = parse(row);
         // List cards have shorter company/location labels and can have unreadable salaries.
         // Preserve a complete snapshot; only explicit comparable list fields may update it.
         let merged=job;
-        if(job.source !== 'boss_detail') {
+        if(job.source === 'boss_search' || job.source === 'browser_import') {
           merged={...job};
           for(const field of ['company','location','salary','experience','degree']) {
             if(!merged[field])merged[field]=old[field];
@@ -71,12 +96,16 @@ export class Store {
             merged={...old,...Object.fromEntries(['title','salary','experience','degree'].map(field=>[field,job[field] || old[field]]))};
           }
         }
+        if(job.source === 'greenhouse_search' && !job.compensation.length && old.compensation.length)
+          merged={...merged,salary:old.salary,compensation:old.compensation,
+            rawText:[job.title,job.company,job.location,old.salary,job.description].filter(Boolean).join('\n')};
+        merged=jobSchema.parse(merged);
         const payload = JSON.stringify(merged);
-        this.db.prepare('UPDATE jobs SET payload=?,revision=?,seen_at=? WHERE id=?').run(payload, row.revision + (payload !== row.payload ? 1 : 0), time, row.id);
+        this.db.prepare('UPDATE jobs SET payload=?,revision=?,seen_at=? WHERE id=?').run(payload, row.revision + (content(merged) !== content(old) ? 1 : 0), time, row.id);
         return this.job(row.id);
       }
       const id = randomUUID();
-      this.db.prepare('INSERT INTO jobs VALUES (?,?,?,?,?,?,?)').run(id, job.url, JSON.stringify(job), 1, '待筛选', time, time);
+      this.db.prepare('INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?)').run(id, job.url, JSON.stringify(job), 1, '待筛选', time, time,job.platform,this.identity(job));
       return this.job(id);
     }));
   }
@@ -85,10 +114,12 @@ export class Store {
     if (!row) throw new TaskError('JOB_NOT_FOUND', '未找到这个岗位。');
     return { ...parse(row), id: row.id, revision: row.revision, status: row.status, firstSeenAt: row.created_at, lastSeenAt: row.seen_at };
   }
-  list({ status, resumeId, limit = 50, offset = 0 } = {}) {
-    const rows = status
-      ? this.db.prepare('SELECT id FROM jobs WHERE status=? ORDER BY seen_at DESC LIMIT ? OFFSET ?').all(status, limit, offset)
-      : this.db.prepare('SELECT id FROM jobs ORDER BY seen_at DESC LIMIT ? OFFSET ?').all(limit, offset);
+  list({ status, platform, query='', resumeId, limit = 50, offset = 0 } = {}) {
+    const clauses=[],args=[];
+    if(status){clauses.push('status=?');args.push(status);}
+    if(platform){clauses.push('platform=?');args.push(platform);}
+    if(query){clauses.push("instr(lower(json_extract(payload,'$.title') || ' ' || json_extract(payload,'$.company') || ' ' || json_extract(payload,'$.location')),lower(?))>0");args.push(query);}
+    const rows=this.db.prepare(`SELECT id FROM jobs ${clauses.length ? 'WHERE '+clauses.join(' AND ') : ''} ORDER BY seen_at DESC,rowid DESC LIMIT ? OFFSET ?`).all(...args,limit,offset);
     return rows.map(row => {
       const job = this.job(row.id);
       const assessment = resumeId ? this.db.prepare('SELECT * FROM assessments WHERE job_id=? AND resume_id=?').get(job.id, resumeId) : null;

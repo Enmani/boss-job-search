@@ -10,7 +10,7 @@ export const job={url:'https://www.zhipin.com/job_detail/native_fixture.html',ti
   description:'需求分析与产品迭代。',rawText:'需求分析与产品迭代。',source:'boss_detail'};
 
 // Real native framing with an explicit Chrome fixture, never a real website result.
-export async function nativeFixture({launcher=false}={}) {
+export async function nativeFixture({launcher=false,version='0.1.3'}={}) {
   const directory=mkdtempSync(join(tmpdir(),'boss-native-'));
   const config={extensionId:'a'.repeat(32),pipe:'\\\\.\\pipe\\boss-job-search-'+randomUUID(),
     token:randomBytes(32).toString('hex')};
@@ -50,7 +50,7 @@ export async function nativeFixture({launcher=false}={}) {
       },fixture.delay);
     }
   });
-  fixture.send({type:'hello',protocol:1,extensionId:config.extensionId,version:'0.1.3'});
+  fixture.send({type:'hello',protocol:1,extensionId:config.extensionId,version});
   try {await ready;}
   catch(error) {await fixture.close();throw error;}
   return fixture;

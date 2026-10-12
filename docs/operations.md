@@ -18,6 +18,8 @@ Chrome 扩展启动、更新和浏览器启动时自动连接。`get_status.brow
 
 ## 搜索与详情
 
+`search_jobs.platform` 默认为 boss。Greenhouse 先用 `set_greenhouse_boards` 保存公司招聘页，再以 platform=greenhouse、query、location 搜索。无需 Chrome 或 API 密钥。不同公司的读取结果独立记录；partial 需检查失败公司，不能宣称覆盖完整。`get_job_detail` 根据已保存的平台自动选择读取方式。
+
 `search_jobs` 接受关键词、九位城市代码和 1–30 条当前页数量；全国代码为 `100010000`。成功结果直接保存到 SQLite。
 
 `get_job_detail` 接受已保存岗位的 jobId，读到所选岗位完整正文后更新记录。列表返回的已保存 description 可能来自此前读取，筛选前刷新详情。
@@ -27,6 +29,8 @@ Chrome 扩展启动、更新和浏览器启动时自动连接。`get_status.brow
 `close_browser` 及 MCP 服务退出只清理当前会话创建的标签。profile 隔离本机求职资料；网页账号仍来自同一个已连接 Chrome 配置。
 
 ## 备份与恢复
+
+首次打开 v0.1.3 的资料时，v0.2 会在该 profile 的 `backups/pre-v0.2-*.sqlite` 中创建原版本备份，并升级数据库结构。简历、岗位 ID、筛选和进度历史保持原样。降回 v0.1.3 前须停止所有服务并恢复这份 v1 备份；旧程序不能直接读取 v2 数据库。
 
 `backup_records` 创建 SQLite 快照，包含简历、岗位、筛选和进度，不含浏览器登录状态。恢复前停止该 profile 的全部 MCP 服务，保存原 profile 副本；将选中快照复制为 `jobs.sqlite`，移开旧 `jobs.sqlite-wal` 和 `jobs.sqlite-shm`。重新启动后核对简历、岗位和进度历史。
 
@@ -44,6 +48,7 @@ Chrome 扩展启动、更新和浏览器启动时自动连接。`get_status.brow
 node plugin/src/cli.mjs tools
 node plugin/src/cli.mjs call get_status
 node plugin/src/cli.mjs call search_jobs path/to/search-arguments.json
+node plugin/src/cli.mjs panel personal --open
 ```
 
 参数文件示例：
@@ -51,3 +56,11 @@ node plugin/src/cli.mjs call search_jobs path/to/search-arguments.json
 ```json
 {"profile":"personal","query":"AI产品","cityCode":"100010000","limit":15}
 ```
+
+Greenhouse 参数示例：
+
+```json
+{"profile":"personal","platform":"greenhouse","query":"Product Manager","boardTokens":["anthropic"],"location":"","limit":15}
+```
+
+`panel` 保持运行，在 Windows 打开默认浏览器。命令行 `call` 完成后会退出；不要用 `call open_dashboard` 启动需要持续使用的面板。在 Codex 中使用 `open_dashboard` 时，面板跟随该 MCP 服务的生命周期；服务停止后重新打开。浏览器访问失败时确认进程仍在运行，并从新的访问链接进入。

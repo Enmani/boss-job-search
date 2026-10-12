@@ -67,7 +67,8 @@ export function startHost(config,{input=process.stdin,output=process.stdout,time
     try {
       for(const message of reader.push(chunk)) {
         if(message.type === 'hello') {
-          if(message.protocol !== 1 || message.extensionId !== config.extensionId || message.version !== '0.1.3') throw new Error('Wrong extension protocol');
+          if(message.protocol !== 1 || message.extensionId !== config.extensionId ||
+              typeof message.version !== 'string' || !/^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(message.version)) throw new Error('Wrong extension protocol');
           version=message.version;observe?.('connected');output.write(encodeFrame({type:'ready',protocol:1}));continue;
         }
         if(message.type !== 'response' || typeof message.id !== 'string') throw new Error('Wrong response');

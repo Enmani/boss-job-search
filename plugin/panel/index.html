@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>求职面板</title><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <header class="page-header">
+      <div><p class="eyebrow">BOSS Job Search · v0.2</p><h1>求职面板</h1><p class="muted">搜索岗位，记录每一步</p></div>
+      <button id="theme" type="button" aria-label="切换深浅主题">深色</button>
+    </header>
+    <div class="connection"><span id="connection">正在连接本机资料…</span><button id="login" type="button">登录</button><button id="refresh" type="button">刷新</button></div>
+    <p id="notice" role="status" aria-live="polite" hidden></p>
+    <section class="surface" aria-labelledby="search-title">
+      <h2 id="search-title">搜索岗位</h2>
+      <form id="search-form">
+        <div class="form-grid">
+          <label>岗位来源<select id="source"><option value="boss">BOSS 直聘</option><option value="greenhouse">Greenhouse</option></select></label>
+          <label class="wide">搜索关键词<input id="query" required maxlength="100" placeholder="AI 产品 / Product Manager"></label>
+          <label id="city-field">搜索城市<select id="city"><option value="100010000">全国</option><option value="101010100">北京</option><option value="101020100">上海</option><option value="101280100">广州</option><option value="101280600">深圳</option><option value="101210100">杭州</option></select></label>
+          <label id="location-field" hidden>岗位地点<input id="location" maxlength="100" placeholder="London"></label>
+          <button type="submit" class="primary">搜索</button>
+        </div>
+      </form>
+      <p id="scope" class="muted">读取当前页，最多 30 个岗位</p>
+      <details id="companies" hidden>
+        <summary>目标公司</summary>
+        <form id="boards-form"><label>公司招聘页<textarea id="boards" rows="3" placeholder="https://job-boards.greenhouse.io/anthropic"></textarea></label><p class="muted">每行一家公司，最多十家</p><button type="submit">保存</button></form>
+      </details>
+      <div id="search-result" class="muted" aria-live="polite"></div>
+    </section>
+    <section aria-labelledby="records-title">
+      <div class="section-header"><h2 id="records-title">求职记录</h2><div class="tabs" role="group" aria-label="显示方式"><button id="list-mode" type="button" aria-pressed="true">岗位</button><button id="board-mode" type="button" aria-pressed="false">进度</button></div></div>
+      <form id="filter-form" class="filters">
+        <label>平台筛选<select id="filter-platform"><option value="">全部平台</option><option value="boss">BOSS 直聘</option><option value="greenhouse">Greenhouse</option></select></label>
+        <label>求职状态<select id="filter-status"><option value="">全部状态</option></select></label>
+        <label>简历版本<select id="filter-resume"><option value="">不显示筛选结论</option></select></label>
+        <label class="wide">记录关键词<input id="filter-query" maxlength="100" placeholder="公司、岗位或地点"></label>
+        <button type="submit">筛选</button>
+      </form>
+      <p id="record-count" class="muted"></p><div id="records" aria-live="polite"></div>
+      <nav class="pagination" aria-label="记录分页"><button id="previous" type="button">上一页</button><button id="next" type="button">下一页</button></nav>
+    </section>
+    <footer class="muted">进度只作记录，实际投递由本人完成</footer>
+  </main>
+  <dialog id="job-dialog" aria-labelledby="job-title">
+    <div class="dialog-header"><h2 id="job-title"></h2><button id="close-dialog" type="button">关闭</button></div>
+    <p id="job-meta" class="muted"></p>
+    <div class="job-actions"><a id="job-link" class="button" target="_blank" rel="noopener noreferrer">原页</a><button id="detail-refresh" type="button">读详情</button><button id="favorite" type="button">收藏</button></div>
+    <p id="dialog-notice" role="status" hidden></p><div id="assessment"></div><p id="job-description" class="description"></p>
+    <form id="progress-form" class="surface">
+      <h3>记录进度</h3><div class="form-grid"><label>当前状态<select id="progress-status"></select></label><label>跟进时间<input id="follow-up" type="datetime-local"></label></div>
+      <label>求职备注<textarea id="progress-note" rows="3" maxlength="3000" placeholder="下一步需要确认的条件"></textarea></label><button type="submit" class="primary">保存</button>
+    </form>
+    <section><h3>进度历史</h3><ol id="history"></ol></section>
+  </dialog>
+  <script type="module" src="/dashboard.js"></script>
+</body>
+</html>

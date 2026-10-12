@@ -1,6 +1,6 @@
 ---
 name: boss-job-search
-description: 搜索 BOSS 直聘岗位、按本机简历筛选，并记录收藏、投递、面试和跟进进度。用于求职场景。
+description: 搜索 BOSS 直聘和目标公司的 Greenhouse 岗位、按本机简历筛选，并用求职面板管理进度。用于求职场景。
 ---
 
 使用本插件的 boss_job_search MCP 工具。profile 默认 personal；它隔离本机资料，网页使用已连接普通 Chrome 的 BOSS 账号。
@@ -13,11 +13,15 @@ set_preferences 只保存用户确认的目标岗位、城市、最低人民币�
 
 ## 搜索和详情
 
-默认直接调用 search_jobs，传入实际关键词和 cityCode，未指定城市时用 100010000 全国；limit 只限制当前页条数，不代表全部搜索结果。工具通过原生 Chrome 扩展读取页面，并自动保存岗位和搜索状态。不需要桌面操作、手动点击扩展或下载 JSON。
+search_jobs 的 platform 默认为 boss，传入实际关键词和 cityCode，未指定城市时用 100010000 全国；limit 只限制当前页条数，不代表全部搜索结果。工具通过原生 Chrome 扩展读取页面，并自动保存岗位和搜索状态。
+
+Greenhouse 用 set_greenhouse_boards 保存用户关注的公司招聘页，再调用 search_jobs，platform=greenhouse，query 匹配标题、公司与正文，location 匹配地点文字。boardTokens 可限定本次搜索公司。只覆盖配置的公司，不是全网岗位搜索。state=partial 表示部分公司失败，检查 search.boards 中的具体原因；state=failed 不能当作没有岗位。公开接口不需要 Chrome、登录或 API 密钥。
+
+统一岗位保留 platform、platformJobId、boardToken、规范链接与 applyUrl。compensation 保留币种和计薪周期；未知周期为 unknown，不把海外薪资直接换算为人民币月薪。不同平台的相似岗位不会自动合并。
 
 get_status.browser 表示本机连接状态，不代表已登录 BOSS。出现 EXTENSION_NOT_CONNECTED 或 BRIDGE_NOT_CONFIGURED 时，按插件的本机安装说明恢复连接；不要切换到会触发空白页的调试接管。open_login 可打开普通 Chrome 的登录页，登录和验证码由本人完成，再重新搜索。网页布局未知、验证失败或空白页不能当作零岗位；只有 state=empty 才是网站明确没有结果。
 
-search_jobs 返回本地合并后的岗位，已有 description 可能来自此前读取。筛选前用 get_job_detail 刷新候选岗位的完整职责、要求、薪资和地址；只有 state=detail 表示此次读到所选岗位的完整正文。被登录遮挡或字体无法识别的金额保持未知，不猜测数字。
+search_jobs 返回本地合并后的岗位，BOSS 的已有 description 可能来自此前读取。Greenhouse 搜索会读取公开完整正文，薪资结构需用详情补齐。筛选前用 get_job_detail 按平台刷新候选岗位；只有 state=detail 表示此次读到所选岗位的完整正文。无法识别的金额保持未知。
 
 import_visible_jobs 仅用于用户提供或其他已授权方式实际读取的岗位材料。observedQuery 只填页面实际关键词，该导入记录不证明 MCP 执行了搜索。
 
@@ -34,6 +38,8 @@ save_assessment 保存推荐、待核实或不符合：推荐须有具体经验�
 matches 同时引用岗位 jobQuote 与简历/事实 resumeQuote 原句，gaps 引用岗位要求并说明缺口。jobRevision 取最新工具结果，变化后重新评估；简历换版本使用新 resumeId。结果展示公司、岗位、地点、薪资、链接、依据和待核实条件。
 
 ## 求职进度
+
+用户要按钮或面板时调用 open_dashboard，并打开其返回的本机链接。面板与 MCP 共用该 profile 的数据库，可搜索、读取详情、收藏、记录进度并查看已保存的简历筛选结论。链接仅供本机访问；MCP 服务退出后需要重新打开。get_saved_job 查看已有正文与进度，不访问网站。
 
 list_jobs 查记录，get_progress_history 查历史。update_progress 只记录用户已发生或明确要求记录的动作；搜索或推荐不能标成已投递。每次更新生成 requestId UUID，重试同一操作复用它。followUpAt 为带时区的记录，不会自动提醒。
 

@@ -1,18 +1,21 @@
 # 直聘求职 · BOSS Job Search
 
-在 Codex 中搜索 BOSS 直聘岗位，对照自己的简历筛选，并保存求职进度。
+在 Codex 或本机求职面板中搜索 BOSS 直聘、Greenhouse 岗位，对照自己的简历筛选，并保存求职进度。
 
-**Windows 预览版 · v0.1.3 · MIT**。非 BOSS 直聘官方项目。
+**Windows 预览版 · v0.2.0 · MIT**。非 BOSS 直聘或 Greenhouse 官方项目。
 
-你在 Codex 下指令，插件在普通 Chrome 中打开岗位页面、读取可见内容，并把结果保存到本机。Chrome 扩展自动连接；日常无需点击扩展图标或下载 JSON。当前没有独立搜索面板或定时搜岗位功能。
+你可以在 Codex 下指令，也可以打开求职面板点击搜索、查看详情和记录进度。BOSS 使用普通 Chrome 的原生扩展；Greenhouse 使用公开岗位接口。两种入口共用本机 SQLite 资料。
 
 ## 功能
 
 - 按关键词和城市搜索当前页岗位，读取完整详情。
+- 添加 Greenhouse 公司招聘页，按关键词和地点搜索公开岗位，读取完整正文和薪资范围。
+- 求职面板支持平台、状态、关键词和简历版本筛选，以及列表、进度看板、备注和历史。
 - 导入 PDF、DOCX、TXT、Markdown 简历，可附已确认事实文件。
 - 由 Codex 对照岗位与简历原文，保存匹配依据、缺口和待核实问题。
 - 记录收藏、沟通、投递、面试、Offer 等进度及历史。
-- SQLite 本机存储、资料隔离、岗位去重、版本检测与数据库备份。
+- 统一岗位结构保留平台、原始岗位编号、链接、币种和计薪周期；按平台内的岗位身份去重。
+- SQLite 本机存储、资料隔离、版本检测与数据库备份；v0.1.3 数据自动升级，升级前保留备份。
 
 岗位和简历更新后需要重新筛选。进度工具只记账，实际沟通和投递由本人完成。
 
@@ -59,6 +62,8 @@ codex plugin add boss-job-search@boss-job-search-local
 
 完整恢复与卸载说明见 [运行说明](docs/operations.md)。插件格式参考 [OpenAI 官方文档](https://developers.openai.com/plugins/build/plugins)。
 
+只使用 Greenhouse 和求职面板时，可跳过 Chrome 扩展与本机通信安装。
+
 ## 使用
 
 在 Codex 中说：
@@ -68,20 +73,38 @@ codex plugin add boss-job-search@boss-job-search-local
 - “把这个岗位记为收藏，备注需要确认远程范围。”
 - “我已提交申请，把这个岗位记为已投递。”
 - “查看求职进度和需要跟进的岗位。”
+- “打开求职面板。”
+- “添加 https://job-boards.greenhouse.io/anthropic，搜索 Product Manager 岗位。”
 
-首次使用会询问简历路径、目标岗位和必要偏好。未确认的薪资、搬迁或工作许可条件保持未知。16 个 MCP 工具见 [工具列表](docs/tools.md)。
+首次使用会询问简历路径、目标岗位和必要偏好。未确认的薪资、搬迁或工作许可条件保持未知。19 个 MCP 工具见 [工具列表](docs/tools.md)。
+
+### 求职面板
+
+在 Codex 中说“打开求职面板”，打开插件返回的本机链接。也可在仓库根目录执行：
+
+```powershell
+npm run panel --prefix ./plugin
+```
+
+命令会保持面板服务运行，并在 Windows 默认浏览器打开页面；关闭命令进程后面板停止。面板支持搜索、查看正文、刷新完整详情、收藏和记录进度。选择简历版本可查看 Codex 已保存的筛选依据；新的简历导入与语义筛选仍在 Codex 中完成。
+
+Greenhouse 搜索前，在“目标公司”中填写公司招聘页，每行一个，最多十家。关键词匹配标题、公司和正文，地点匹配地点文字；每次最多保存 30 条，可收窄关键词继续搜索。它只覆盖已添加的公司。[公开接口说明](https://docs.greenhouse.io/job-board.html)
 
 ## 数据和权限
 
 Chrome 扩展只声明 `scripting`、`nativeMessaging` 和 `https://www.zhipin.com/*`。它使用 ISOLATED 脚本读取可见岗位内容，登录状态由普通 Chrome 管理。
 
-本机通信使用 Native Messaging 和当前用户的 Windows 命名管道，不开网络监听端口。主机只授权安装时指定的扩展 ID。只管理当前 MCP 会话创建的岗位标签。
+BOSS 通信使用 Native Messaging 和当前用户的 Windows 命名管道。主机只授权安装时指定的扩展 ID，只管理当前会话创建的岗位标签。Greenhouse 只对官方公开接口发起 GET 请求。
+
+面板按需监听 `127.0.0.1` 的随机端口，使用临时访问凭据和同源检查。访问链接仅供本机使用，不要分享；服务退出后链接失效。面板不开放简历文件读取或任意系统命令。
 
 默认资料目录为 `%LOCALAPPDATA%/boss-job-search/<profile>`。简历、岗位、筛选和进度保存在本机；Codex 执行筛选时会读取这些文字，应按所使用的 Codex 环境管理资料权限。插件不导出 Chrome 登录凭据。
 
 ## 当前限制
 
-- 搜索只覆盖当前页，最多读取 30 条。
+- BOSS 搜索只覆盖当前页，最多读取 30 条。
+- Greenhouse 仅搜索添加的公司，部分公司失败会分别显示原因；不支持全站搜索。
+- 不同平台的相似岗位不会自动合并。薪资周期未明确时保留未知，不进行汇率换算。
 - 列表薪资特殊字体无法可靠读取时保持未知；需要读详情获取正常金额。
 - 登录和验证码由本人完成。登录遮挡、验证、空白页和布局变化会返回状态。
 - 跟进日期只是一条记录，没有自动提醒。
@@ -96,6 +119,14 @@ npm run precheck
 ./scripts/package-release.ps1
 ```
 
-15 项检查覆盖持久化、回滚、引用校验、MCP、本机通信与 DOM 样例。网页样例拦截全部网络，不能替代登录后的真实网站检查。v0.1.3 已在一台 Windows 机器的普通 Chrome 完成两轮真实 MCP 搜索，每轮 15 条，并验证完整详情、自动保存和服务重启后的记录。
+自动检查覆盖持久化、回滚、引用校验、MCP、本机通信、Greenhouse 接口样例、旧数据迁移，以及真实浏览器中的面板按钮和响应式布局。接口样例使用模拟数据，不能替代真实网站验证。实际网站检查使用独立的临时资料目录：
+
+```powershell
+node scripts/live-check.mjs
+# 已安装并连接 BOSS 扩展时，同时检查 BOSS：
+node scripts/live-check.mjs --boss
+```
+
+真实接口检查结果见 [版本记录](CHANGELOG.md)。
 
 [架构](docs/architecture.md) · [运行说明](docs/operations.md) · [后续工作](TODO.md) · [MIT 许可证](LICENSE)

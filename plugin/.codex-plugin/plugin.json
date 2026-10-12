@@ -1,7 +1,7 @@
 {
   "name": "boss-job-search",
-  "version": "0.1.3",
-  "description": "搜索 BOSS 直聘岗位，结合本机简历筛选，并保存求职进度。",
+  "version": "0.2.0",
+  "description": "搜索 BOSS 与 Greenhouse 岗位，结合本机简历筛选，并用求职面板管理进度。",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
@@ -10,7 +10,7 @@
     "developerName": "Enmani",
     "category": "Productivity",
     "defaultPrompt": [
-      "按我的简历搜索 BOSS 岗位，列出匹配依据和待核实条件。",
+      "打开求职面板，搜索 BOSS 或目标公司的 Greenhouse 岗位。",
       "查看我的求职进度和需要跟进的岗位。"
     ]
   }
