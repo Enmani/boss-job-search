@@ -8,7 +8,7 @@ import { GreenhouseJobs } from './greenhouse.mjs';
 import { createActions,failure } from './actions.mjs';
 import { Dashboard } from './dashboard.mjs';
 
-export const VERSION='0.2.0';
+export const VERSION='0.2.1';
 function result(value) {return {content:[{type:'text',text:JSON.stringify(value)}],structuredContent:value};}
 export function createApp(root,browser=new BossBrowser(root),greenhouse=new GreenhouseJobs()) {
   const actions=createActions(root,browser,greenhouse),dashboard=new Dashboard(actions);

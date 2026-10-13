@@ -48,10 +48,10 @@ test('native pipe authentication, concurrent busy state, page gates and wrong de
   } finally {await browser.close();await fixture.close();}
 });
 
-test('v0.2 extension uses the same native protocol without tying compatibility to its release version',async()=>{
-  const fixture=await nativeFixture({version:'0.2.0'}),browser=new BossBrowser(fixture.directory);browser.configPath=fixture.configPath;
+for(const version of ['0.2.0','0.2.1'])test(`extension ${version} uses the same native protocol without tying compatibility to its release version`,async()=>{
+  const fixture=await nativeFixture({version}),browser=new BossBrowser(fixture.directory);browser.configPath=fixture.configPath;
   try {
-    const status=await browser.status();assert.equal(status.state,'connected');assert.equal(status.extensionVersion,'0.2.0');
+    const status=await browser.status();assert.equal(status.state,'connected');assert.equal(status.extensionVersion,version);
     assert.equal((await browser.search('personal',{query:'示例',limit:15})).jobs.length,1);
   } finally {await browser.close();await fixture.close();}
 });

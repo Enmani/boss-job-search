@@ -1,6 +1,6 @@
 {
   "name": "boss-job-search",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "搜索 BOSS 与 Greenhouse 岗位，结合本机简历筛选，并用求职面板管理进度。",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",

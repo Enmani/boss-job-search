@@ -7,14 +7,15 @@ import { join,resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
+import { VERSION } from '../plugin/src/server.mjs';
 
 const root=mkdtempSync(join(tmpdir(),'job-search-live-'));
 const args=process.argv.slice(2),reportPath=args.find(value=>value.startsWith('--report='))?.slice(9);
 const screenshotPath=args.find(value=>value.startsWith('--screenshot='))?.slice(13);
-const report={checkedAt:new Date().toISOString(),version:'0.2.0',greenhouse:null,panel:null,boss:null,persistence:null};
+const report={checkedAt:new Date().toISOString(),version:VERSION,greenhouse:null,panel:null,boss:null,persistence:null};
 let client,browser;
 async function connect() {
-  const connection=new Client({name:'job-search-live-check',version:'0.2.0'});
+  const connection=new Client({name:'job-search-live-check',version:VERSION});
   await connection.connect(new StdioClientTransport({command:process.execPath,
     args:[fileURLToPath(new URL('../plugin/src/server.mjs',import.meta.url))],
     env:{...process.env,BOSS_DATA_DIR:root,

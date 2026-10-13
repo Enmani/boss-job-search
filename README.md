@@ -2,7 +2,7 @@
 
 在 Codex 或本机求职面板中搜索 BOSS 直聘、Greenhouse 岗位，对照自己的简历筛选，并保存求职进度。
 
-**Windows 预览版 · v0.2.0 · MIT**。非 BOSS 直聘或 Greenhouse 官方项目。
+**Windows 预览版 · v0.2.1 · MIT**。非 BOSS 直聘或 Greenhouse 官方项目。
 
 你可以在 Codex 下指令，也可以打开求职面板点击搜索、查看详情和记录进度。BOSS 使用普通 Chrome 的原生扩展；Greenhouse 使用公开岗位接口。两种入口共用本机 SQLite 资料。
 
@@ -61,6 +61,8 @@ codex plugin add boss-job-search@boss-job-search-local
 这一步在当前 Windows 用户下注册 `com.boss_job_search.bridge`。刷新 Chrome 扩展，保持普通 Chrome 打开，并本人登录 BOSS。
 
 完整恢复与卸载说明见 [运行说明](docs/operations.md)。插件格式参考 [OpenAI 官方文档](https://developers.openai.com/plugins/build/plugins)。
+
+从 v0.2.0 升级时，更新源码和 Codex 插件，并在原 Chrome 扩展目录中更新文件、刷新扩展。新增的 `alarms` 和 `storage` 权限用于后台有限重连；求职资料沿用原目录。
 
 只使用 Greenhouse 和求职面板时，可跳过 Chrome 扩展与本机通信安装。
 
