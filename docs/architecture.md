@@ -12,7 +12,7 @@ Greenhouse 数据流：MCP/面板 → `boards-api.greenhouse.io/v1/boards/<board
 
 ## 边界
 
-扩展只声明 scripting、nativeMessaging 和 https://www.zhipin.com/*。主机注册在当前用户 HKCU 中，allowed_origins 只授权安装时指定的扩展 ID。MCP 的管道请求还需本机配置中的随机凭据；凭据不进入插件包、日志或工具响应。
+扩展声明 scripting、nativeMessaging、alarms、storage 和 https://www.zhipin.com/*。alarms 用于唤醒后台重连，storage.session 只保存当前浏览器会话的连接状态、有限重试次数和错误。主机注册在当前用户 HKCU 中，allowed_origins 只授权安装时指定的扩展 ID。MCP 的管道请求还需本机配置中的随机凭据；凭据不进入插件包、日志或工具响应。
 
 本机主机和 MCP 共用 protocol=1、4 字节小端长度前缀及 UTF-8 JSON，每帧最多 512 KiB。扩展的发布版本仅用于诊断，通信兼容性由协议版本决定。主机只分派搜索、详情、登录、状态和会话标签清理，不接受 JavaScript、任意网址或系统命令。扩展再次检查命令参数与 BOSS 详情链接。
 

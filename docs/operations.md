@@ -12,9 +12,11 @@ Chrome 扩展启动、更新和浏览器启动时自动连接。`get_status.brow
 
 `EXTENSION_NOT_CONNECTED` 时确认普通 Chrome 打开、扩展启用、ID 与 `bridge/host.json` 的 `allowed_origins` 一致。重新加载到另一目录可能改变扩展 ID，需要用新 ID 重新安装本机通信。
 
-扩展在错误列表保留 Chrome 原始连接错误，前缀为“本机连接失败”。`host-state.json` 和 `get_status` 只显示有限启动状态、时间和错误代码，不记录通信正文或凭据。
+扩展在错误列表保留 Chrome 原始连接错误，前缀为“本机连接失败”。`host-state.json` 和 `get_status` 只显示有限启动状态、时间和错误代码，不记录通信正文或凭据。扩展在当前浏览器会话中保存重试次数和最近错误，不保存岗位或登录资料。
 
-若 Chrome 提示 `Specified native messaging host not found`，检查注册表默认值、主机 JSON 和启动脚本是否存在。核对无误后本人退出并重开普通 Chrome；首次真实安装曾用此步骤恢复。连接中断只进行两次有限重连，恢复条件后可刷新扩展或点击图标。
+若 Chrome 提示 `Specified native messaging host not found`，检查注册表默认值、主机 JSON 和启动脚本是否存在。这条错误也可能表示清单无法读取或解析。
+
+每轮连接最多尝试六次：先立即连接，失败后以五秒间隔重试两次，再以一分钟间隔重试三次。Chrome 定时任务会唤醒休眠的扩展后台；后台重启不会重置本轮次数。安装本机通信后，扩展会在下一次重试时自动连接。用完次数后暂停，点击图标可重新开始；连接未完成时，点击也会替换卡住的连接。
 
 ## 搜索与详情
 

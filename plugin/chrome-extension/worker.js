@@ -1,8 +1,8 @@
 import { readJobDocument } from './reader.js';
+import { createNativeConnection } from './connection.js';
 
-const HOST='com.boss_job_search.bridge';
 const sessions=new Map(),openUrls=new Map();
-let port=null,ready=false,busy=false,retries=0;
+let busy=false;
 
 function jobUrl(value) {
   const url=new URL(value);
@@ -96,32 +96,10 @@ async function handle(command,connection) {
   try {
     validateCommand(command);
     const result=await execute(command);
-    if(port===connection)connection.postMessage({type:'response',id:command.id,result});
+    if(bridge.isCurrent(connection))connection.postMessage({type:'response',id:command.id,result});
   } catch {
-    if(port===connection)connection.postMessage({type:'response',id:command.id,error:{message:'岗位页面操作失败，请检查页面是否正常、是否已登录。'}});
+    if(bridge.isCurrent(connection))connection.postMessage({type:'response',id:command.id,error:{message:'岗位页面操作失败，请检查页面是否正常、是否已登录。'}});
   } finally {busy=false;}
 }
-function connect() {
-  if(port)return;
-  const connection=chrome.runtime.connectNative(HOST);
-  port=connection;
-  connection.onMessage.addListener(message=>{
-    if(message.type==='ready') {
-      ready=true;retries=0;chrome.action.setBadgeText({text:'OK'});
-      chrome.action.setTitle({title:'求职已连接，Codex 可以直接搜索'});
-    } else if(message.type==='command')handle(message,connection);
-  });
-  connection.onDisconnect.addListener(()=>{
-    const reason=chrome.runtime.lastError;
-    if(port!==connection)return;
-    port=null;ready=false;chrome.action.setBadgeText({text:'!'});
-    if(reason)console.error('本机连接失败:',reason.message);
-    chrome.action.setTitle({title:reason ? '求职连接中断，请确认本机通信已安装' : '求职未连接'});
-    if(retries++<2)setTimeout(connect,5000);
-  });
-  connection.postMessage({type:'hello',protocol:1,extensionId:chrome.runtime.id,version:chrome.runtime.getManifest().version});
-}
-chrome.runtime.onStartup.addListener(connect);
-chrome.runtime.onInstalled.addListener(connect);
-chrome.action.onClicked.addListener(()=>{if(!ready)connect();});
-connect();
+const bridge=createNativeConnection({chromeApi:chrome,onCommand:handle});
+void bridge.start();

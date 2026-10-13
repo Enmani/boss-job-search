@@ -92,7 +92,7 @@ Greenhouse 搜索前，在“目标公司”中填写公司招聘页，每行一
 
 ## 数据和权限
 
-Chrome 扩展只声明 `scripting`、`nativeMessaging` 和 `https://www.zhipin.com/*`。它使用 ISOLATED 脚本读取可见岗位内容，登录状态由普通 Chrome 管理。
+Chrome 扩展声明 `scripting`、`nativeMessaging`、`alarms`、`storage` 和 `https://www.zhipin.com/*`。它使用 ISOLATED 脚本读取可见岗位内容；定时任务负责有限重连，会话存储只记录连接状态和错误。登录状态由普通 Chrome 管理。
 
 BOSS 通信使用 Native Messaging 和当前用户的 Windows 命名管道。主机只授权安装时指定的扩展 ID，只管理当前会话创建的岗位标签。Greenhouse 只对官方公开接口发起 GET 请求。
 

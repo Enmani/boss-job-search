@@ -4,7 +4,7 @@
   "version": "0.2.0",
   "description": "让本机 Codex 搜索 BOSS 岗位并读取完整详情。",
   "minimum_chrome_version": "105",
-  "permissions": ["scripting", "nativeMessaging"],
+  "permissions": ["scripting", "nativeMessaging", "alarms", "storage"],
   "host_permissions": ["https://www.zhipin.com/*"],
   "background": {"service_worker": "worker.js", "type": "module"},
   "action": {"default_title": "求职连接"}
