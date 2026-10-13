@@ -7,16 +7,16 @@
 <body>
   <main>
     <header class="page-header">
-      <div><p class="eyebrow">BOSS Job Search · v0.2</p><h1>求职面板</h1><p class="muted">搜索岗位，记录每一步</p></div>
-      <button id="theme" type="button" aria-label="切换深浅主题">深色</button>
+      <div><p class="eyebrow">BOSS Job Search · v0.3</p><h1>求职面板</h1><p class="muted">搜索岗位，记录每一步</p></div>
+      <nav class="tabs" aria-label="页面导航"><a class="button" data-panel-page="/" aria-current="page">求职</a><a class="button" id="settings-link" data-panel-page="/settings">设置</a></nav>
     </header>
-    <div class="connection"><span id="connection">正在连接本机资料…</span><button id="login" type="button">登录</button><button id="refresh" type="button">刷新</button></div>
+    <div class="connection"><span id="connection">正在连接本机资料…</span><button id="import-open" type="button">导入岗位</button><button id="refresh" type="button">刷新</button></div>
     <p id="notice" role="status" aria-live="polite" hidden></p>
     <section class="surface" aria-labelledby="search-title">
       <h2 id="search-title">搜索岗位</h2>
       <form id="search-form">
         <div class="form-grid">
-          <label>岗位来源<select id="source"><option value="boss">BOSS 直聘</option><option value="greenhouse">Greenhouse</option></select></label>
+          <label>岗位来源<select id="source"><option value="boss">BOSS 直聘</option><option value="greenhouse">Greenhouse</option><option value="ashby">Ashby</option><option value="lever">Lever</option></select></label>
           <label class="wide">搜索关键词<input id="query" required maxlength="100" placeholder="AI 产品 / Product Manager"></label>
           <label id="city-field">搜索城市<select id="city"><option value="100010000">全国</option><option value="101010100">北京</option><option value="101020100">上海</option><option value="101280100">广州</option><option value="101280600">深圳</option><option value="101210100">杭州</option></select></label>
           <label id="location-field" hidden>岗位地点<input id="location" maxlength="100" placeholder="London"></label>
@@ -24,21 +24,19 @@
         </div>
       </form>
       <p id="scope" class="muted">读取当前页，最多 30 个岗位</p>
-      <details id="companies" hidden>
-        <summary>目标公司</summary>
-        <form id="boards-form"><label>公司招聘页<textarea id="boards" rows="3" placeholder="https://job-boards.greenhouse.io/anthropic"></textarea></label><p class="muted">每行一家公司，最多十家</p><button type="submit">保存</button></form>
-      </details>
       <div id="search-result" class="muted" aria-live="polite"></div>
     </section>
     <section aria-labelledby="records-title">
       <div class="section-header"><h2 id="records-title">求职记录</h2><div class="tabs" role="group" aria-label="显示方式"><button id="list-mode" type="button" aria-pressed="true">岗位</button><button id="board-mode" type="button" aria-pressed="false">进度</button></div></div>
       <form id="filter-form" class="filters">
-        <label>平台筛选<select id="filter-platform"><option value="">全部平台</option><option value="boss">BOSS 直聘</option><option value="greenhouse">Greenhouse</option></select></label>
+        <label>平台筛选<select id="filter-platform"><option value="">全部平台</option><option value="boss">BOSS 直聘</option><option value="greenhouse">Greenhouse</option><option value="ashby">Ashby</option><option value="lever">Lever</option><option value="manual">通用导入</option></select></label>
         <label>求职状态<select id="filter-status"><option value="">全部状态</option></select></label>
         <label>简历版本<select id="filter-resume"><option value="">不显示筛选结论</option></select></label>
         <label class="wide">记录关键词<input id="filter-query" maxlength="100" placeholder="公司、岗位或地点"></label>
         <button type="submit">筛选</button>
+        <button id="rank" type="button" aria-pressed="false">筛选排序</button>
       </form>
+      <p id="ranking-scope" class="muted" hidden>按条件与 Codex 已存结论排序</p>
       <p id="record-count" class="muted"></p><div id="records" aria-live="polite"></div>
       <nav class="pagination" aria-label="记录分页"><button id="previous" type="button">上一页</button><button id="next" type="button">下一页</button></nav>
     </section>
@@ -54,6 +52,20 @@
       <label>求职备注<textarea id="progress-note" rows="3" maxlength="3000" placeholder="下一步需要确认的条件"></textarea></label><button type="submit" class="primary">保存</button>
     </form>
     <section><h3>进度历史</h3><ol id="history"></ol></section>
+  </dialog>
+  <dialog id="import-dialog" aria-labelledby="import-title">
+    <div class="dialog-header"><h2 id="import-title">导入岗位</h2><button id="import-close" type="button">关闭</button></div>
+    <p class="muted">粘贴岗位正文，不自动抓取链接</p>
+    <form id="import-form">
+      <label>岗位链接<input id="import-url" type="url" required maxlength="2000" placeholder="https://example.com/careers/job"></label>
+      <div class="form-grid"><label>岗位名称<input id="import-job-title" required maxlength="500"></label><label>公司名称<input id="import-company" maxlength="500"></label></div>
+      <div class="form-grid"><label>岗位地点<input id="import-location" maxlength="300"></label><label>经验要求<input id="import-experience" maxlength="200" placeholder="3-5年"></label><label>薪资原文<input id="import-salary" maxlength="200" placeholder="面议或原文范围"></label></div>
+      <details><summary>明确薪资</summary><p class="muted">仅填写原文明确的范围与单位</p>
+        <div class="form-grid"><label>薪资下限<input id="import-min" type="number" min="0" step="any"></label><label>薪资上限<input id="import-max" type="number" min="0" step="any"></label><label>计薪币种<input id="import-currency" maxlength="3" placeholder="USD"></label><label>计薪周期<select id="import-period"><option value="unknown">未披露</option><option value="year">每年</option><option value="month">每月</option><option value="hour">每小时</option><option value="day">每天</option></select></label></div>
+      </details>
+      <label>岗位正文<textarea id="import-description" rows="10" required maxlength="100000"></textarea></label>
+      <p id="import-notice" role="status" hidden></p><button type="submit" class="primary">保存</button>
+    </form>
   </dialog>
   <script type="module" src="/dashboard.js"></script>
 </body>

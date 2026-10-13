@@ -1,5 +1,5 @@
 export const statuses=['待筛选','收藏','准备投递','已沟通','已投递','面试','Offer','拒绝','撤回'];
-export const platformName=value=>value==='greenhouse' ? 'Greenhouse' : 'BOSS 直聘';
+export const platformName=value=>({boss:'BOSS 直聘',greenhouse:'Greenhouse',ashby:'Ashby',lever:'Lever',manual:'通用导入'})[value] || value;
 export function element(tag,text,className) {
   const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(className)node.className=className;return node;
 }
@@ -12,6 +12,10 @@ export function jobCard(job,open) {
     element('p',job.salary || '薪资待核实','muted'));
   const meta=element('p');meta.append(element('span',platformName(job.platform),'tag'),element('span',job.status,'tag'));card.append(meta);
   if(job.assessment)card.append(element('p',`${job.assessment.decision}${job.assessment.stale ? ' · 需重新筛选' : ''}`,'muted'));
+  if(job.ranking) {
+    card.append(element('p',`${job.ranking.group} · ${job.ranking.assessmentState}`,'ranking-result'));
+    for(const hint of job.ranking.hints)card.append(element('p',`${hint.field}：${hint.reason}`,'muted'));
+  }
   const button=element('button','查看');button.type='button';button.addEventListener('click',()=>open(job));card.append(button);return card;
 }
 export function renderRecords(container,jobs,mode,open,{filtered=false}={}) {

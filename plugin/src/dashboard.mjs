@@ -5,9 +5,12 @@ import { profileSchema,TaskError } from './domain.mjs';
 import { failure } from './actions.mjs';
 
 const files=new Map([['/',['index.html','text/html']],['/dashboard.js',['dashboard.js','text/javascript']],
+  ['/settings',['settings.html','text/html']],['/settings.js',['settings.js','text/javascript']],
+  ['/client.js',['client.js','text/javascript']],['/import.js',['import.js','text/javascript']],
   ['/view.js',['view.js','text/javascript']],['/style.css',['style.css','text/css']]]);
 const allowed=new Set(['get_status','search_jobs','get_job_detail','get_saved_job','list_jobs','list_resumes',
-  'set_greenhouse_boards','update_progress','get_progress_history','open_login']);
+  'set_greenhouse_boards','set_platform_boards','check_platform','set_preferences','import_job','rank_jobs',
+  'update_progress','get_progress_history','open_login']);
 const json=(response,status,value)=>{response.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});response.end(JSON.stringify(value));};
 export class Dashboard {
   constructor(actions) {this.actions=actions;this.token=randomBytes(32).toString('hex');this.server=null;this.starting=null;}
@@ -44,7 +47,7 @@ export class Dashboard {
       let size=0;const chunks=[];
       for await(const chunk of request) {
         size+=chunk.length;
-        if(size>65536)throw new TaskError('INPUT_TOO_LARGE','输入内容过大。');
+        if(size>(match[1]==='import_job' ? 512*1024 : 65536))throw new TaskError('INPUT_TOO_LARGE','输入内容过大。');
         chunks.push(chunk);
       }
       let args;try{args=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{throw new TaskError('INVALID_INPUT','输入格式不正确。');}

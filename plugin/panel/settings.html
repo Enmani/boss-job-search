@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>求职设置</title><link rel="stylesheet" href="/style.css"></head>
+<body><main>
+  <header class="page-header"><div><p class="eyebrow">BOSS Job Search · v0.3</p><h1>求职设置</h1><p class="muted">管理平台与求职条件</p></div>
+    <nav class="tabs" aria-label="页面导航"><a class="button" id="home-link" data-panel-page="/">求职</a><a class="button" data-panel-page="/settings" aria-current="page">设置</a></nav>
+  </header>
+  <p id="notice" role="status" aria-live="polite" hidden></p>
+  <section aria-labelledby="platform-title"><div class="section-header"><h2 id="platform-title">岗位平台</h2><button id="refresh" type="button">刷新</button></div>
+    <p class="muted">公开岗位接口无需登录</p><div id="platforms" class="platform-grid"></div>
+  </section>
+  <section class="surface" aria-labelledby="preferences-title"><h2 id="preferences-title">求职条件</h2>
+    <form id="preferences-form">
+      <div class="form-grid">
+        <label>目标岗位<input id="target-roles" maxlength="2000" placeholder="产品经理，Product Manager"></label>
+        <label>偏好地点<input id="cities" maxlength="1000" placeholder="上海，London"></label>
+        <label>默认简历<select id="default-resume"><option value="">暂不选择</option></select></label>
+      </div>
+      <p class="muted">岗位、地点用逗号分隔</p>
+      <div class="form-grid">
+        <label>最低薪资<input id="minimum-salary" type="number" min="0" step="any" placeholder="不限"></label>
+        <label>计薪币种<select id="salary-currency"><option>CNY</option><option>USD</option><option>EUR</option><option>GBP</option><option>CAD</option><option>AUD</option><option>SGD</option><option>HKD</option><option>JPY</option></select></label>
+        <label>计薪周期<select id="salary-period"><option value="month">每月</option><option value="year">每年</option><option value="hour">每小时</option><option value="day">每天</option></select></label>
+        <label>经验上限<input id="max-experience" type="number" min="0" max="100" step="any" placeholder="不限"></label>
+      </div>
+      <p class="muted">经验上限指岗位要求的最低年限</p>
+      <label>办公范围<textarea id="location-requirement" rows="2" maxlength="1000" placeholder="远程范围、搬迁或签证条件"></textarea></label>
+      <label>其他偏好<textarea id="preference-notes" rows="2" maxlength="2000"></textarea></label>
+      <button type="submit" class="primary">保存</button>
+    </form>
+  </section>
+  <section class="surface" aria-labelledby="appearance-title"><h2 id="appearance-title">面板外观</h2><label>显示主题<select id="theme-select"><option value="light">浅色</option><option value="dark">深色</option></select></label></section>
+  <footer class="muted">简历与求职记录保存在本机</footer>
+</main><script type="module" src="/settings.js"></script></body></html>

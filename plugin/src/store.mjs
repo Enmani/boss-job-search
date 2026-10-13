@@ -2,7 +2,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { TaskError, jobSchema, preferencesSchema, assessmentSchema, validateEvidence, statuses, boardsSchema } from './domain.mjs';
+import { TaskError, jobSchema, preferencesSchema, assessmentSchema, validateEvidence, statuses } from './domain.mjs';
+import { platformBoards } from './boards.mjs';
 
 const now = () => new Date().toISOString();
 const parse = row => row ? JSON.parse(row.payload) : null;
@@ -56,16 +57,21 @@ export class Store {
   preferences() { return parse(this.db.prepare("SELECT payload FROM settings WHERE key='preferences'").get()) ?? preferencesSchema.parse({}); }
   setPreferences(input) {
     const preferences = preferencesSchema.parse(input);
+    if(preferences.defaultResumeId)this.resume(preferences.defaultResumeId);
     this.db.prepare("INSERT INTO settings VALUES ('preferences',?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload").run(JSON.stringify(preferences));
     return preferences;
   }
-  boards() {return parse(this.db.prepare("SELECT payload FROM settings WHERE key='greenhouse_boards'").get()) ?? [];}
-  setBoards(input) {
-    const boards=boardsSchema.parse(input);
-    this.db.prepare("INSERT INTO settings VALUES ('greenhouse_boards',?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload").run(JSON.stringify(boards));
+  setting(key) {return parse(this.db.prepare('SELECT payload FROM settings WHERE key=?').get(key));}
+  setSetting(key,value) {
+    this.db.prepare('INSERT INTO settings VALUES (?,?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload').run(key,JSON.stringify(value));
+  }
+  boards(platform='greenhouse') {return this.setting(`${platform}_boards`) ?? [];}
+  setBoards(input,platform='greenhouse') {
+    const boards=platformBoards(platform,input);
+    this.transaction(()=>{this.setSetting(`${platform}_boards`,boards);this.db.prepare('DELETE FROM settings WHERE key=?').run(`${platform}_check`);});
     return boards;
   }
-  identity(job) {return `${job.platform}:${job.boardToken}:${job.platformJobId}`;}
+  identity(job) {return `${job.platform}:${job.region ? job.region+':' : ''}${job.boardToken}:${job.platformJobId}`;}
   addResume(resume) {
     const value = { ...resume, id: randomUUID(), importedAt: now() };
     this.db.prepare('INSERT INTO resumes VALUES (?,?)').run(value.id, JSON.stringify(value));
@@ -128,15 +134,19 @@ export class Store {
     });
   }
   assess(jobId, resumeId, revision, input) {
-    const assessment = assessmentSchema.parse(input);
-    return this.transaction(() => {
+    return this.assessMany(resumeId,[{jobId,jobRevision:revision,assessment:input}])[0];
+  }
+  assessMany(resumeId, inputs) {
+    if(new Set(inputs.map(input=>input.jobId)).size!==inputs.length)throw new TaskError('DUPLICATE_JOB','一批结论不能包含重复岗位。');
+    const entries=inputs.map(input=>({...input,assessment:assessmentSchema.parse(input.assessment)}));
+    return this.transaction(() => entries.map(({jobId,jobRevision:revision,assessment})=>{
       const job = this.job(jobId);
       if (job.revision !== revision) throw new TaskError('JOB_CHANGED', '岗位内容已更新，请重新读取后筛选。');
       validateEvidence(assessment, job, this.resume(resumeId));
       this.db.prepare('INSERT INTO assessments VALUES (?,?,?,?,?) ON CONFLICT(job_id,resume_id) DO UPDATE SET payload=excluded.payload,job_revision=excluded.job_revision,updated_at=excluded.updated_at')
         .run(jobId, resumeId, JSON.stringify(assessment), revision, now());
       return { jobId, resumeId, ...assessment };
-    });
+    }));
   }
   progress({jobId,status,note='',followUpAt=null,requestId}) {
     if (!statuses.includes(status)) throw new TaskError('INVALID_STATUS', '求职状态无效。');

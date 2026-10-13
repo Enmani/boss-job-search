@@ -1,33 +1,24 @@
 import {statuses,platformName,options,renderRecords,renderAssessment,renderHistory,element} from './view.js';
+import {api,hasAccess} from './client.js';
+import {setupImport} from './import.js';
 
-const $=id=>document.getElementById(id),params=new URLSearchParams(location.hash.slice(1));
-const token=params.get('token'),profile=params.get('profile') || 'personal';
-const state={jobs:[],mode:'list',offset:0,selected:null,busy:false,pendingProgress:null};
+const $=id=>document.getElementById(id);
+const state={jobs:[],mode:'list',offset:0,selected:null,busy:false,pendingProgress:null,ranked:false,hasMore:false};
 const LIMIT=30;
 options($('filter-status'),statuses.map(status=>[status,status]));
 options($('progress-status'),statuses.map(status=>[status,status]));
-const theme=localStorage.getItem('job-panel-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-function setTheme(value) {document.documentElement.dataset.theme=value;$('theme').textContent=value==='dark' ? '浅色' : '深色';localStorage.setItem('job-panel-theme',value);}
-setTheme(theme);
-$('theme').addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark' ? 'light' : 'dark'));
 function notify(message,error=false,dialog=false) {
   const node=$(dialog ? 'dialog-notice' : 'notice');node.hidden=!message;node.textContent=message;node.classList.toggle('error',error);
-}
-async function api(name,args={}) {
-  const response=await fetch(`/api/tools/${name}`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({profile,...args})});
-  const data=await response.json();
-  if(!response.ok){const error=new Error(data.message || '读取失败，请重试');error.code=data.code;throw error;}
-  return data;
 }
 async function run(action,{dialog=false,loading='正在读取…'}={}) {
   if(state.busy)return;state.busy=true;notify(loading,false,dialog);
   const disabled=[...document.querySelectorAll('button')].map(button=>[button,button.disabled]);
-  for(const [button] of disabled)if(!['close-dialog','theme'].includes(button.id))button.disabled=true;
+  for(const [button] of disabled)if(!['close-dialog','import-close'].includes(button.id))button.disabled=true;
   try {await action();}
   catch(error) {notify(error.message || '连接失败，请重试',true,dialog);}
   finally {state.busy=false;for(const [button,wasDisabled] of disabled)button.disabled=wasDisabled;updatePagination();}
 }
-function updatePagination() {$('previous').disabled=state.busy || state.offset===0;$('next').disabled=state.busy || state.jobs.length<LIMIT;}
+function updatePagination() {$('previous').disabled=state.busy || state.offset===0;$('next').disabled=state.busy || (state.ranked ? !state.hasMore : state.jobs.length<LIMIT);}
 function filters() {
   return {limit:LIMIT,offset:state.offset,query:$('filter-query').value.trim(),
     ...($('filter-platform').value ? {platform:$('filter-platform').value} : {}),
@@ -39,33 +30,30 @@ function draw() {
   $('record-count').textContent=state.jobs.length ? `显示第 ${state.offset+1}–${state.offset+state.jobs.length} 条记录` : '';
   updatePagination();
 }
-async function loadJobs() {state.jobs=(await api('list_jobs',filters())).jobs;draw();}
+async function loadJobs() {
+  const result=await api(state.ranked ? 'rank_jobs' : 'list_jobs',filters());state.jobs=result.jobs;state.hasMore=result.hasMore;
+  $('ranking-scope').hidden=!state.ranked;
+  if(state.ranked)$('ranking-scope').textContent=`按条件与 Codex 已存结论排序 · ${result.coverage}`;
+  draw();
+}
 function sourceChanged() {
-  const gh=$('source').value==='greenhouse';$('city-field').hidden=gh;$('location-field').hidden=!gh;$('companies').hidden=!gh;
-  $('scope').textContent=gh ? '仅搜索已添加公司的公开岗位' : '读取当前页，最多 30 个岗位';
+  const publicApi=$('source').value!=='boss';$('city-field').hidden=publicApi;$('location-field').hidden=!publicApi;
+  $('scope').textContent=publicApi ? '仅搜索设置中添加的公司' : '读取当前页，最多 30 个岗位';
 }
 $('source').addEventListener('change',sourceChanged);sourceChanged();
 async function refresh() {
-  const [status]=await Promise.all([api('get_status'),loadJobs()]);
-  $('connection').textContent=status.browser.state==='connected' ? '本机资料已连接 · BOSS 扩展可用' : '本机资料已连接 · BOSS 扩展未连接';
-  $('boards').value=status.greenhouseBoards.join('\n');
+  const status=await api('get_status');
+  $('connection').textContent='本机求职资料已连接';
   const selected=$('filter-resume').value;
-  $('filter-resume').replaceChildren();options($('filter-resume'),[['','不显示筛选结论'],...status.resumes.map(resume=>[resume.id,resume.label])]);
-  if(status.resumes.some(resume=>resume.id===selected))$('filter-resume').value=selected;
+  $('filter-resume').replaceChildren();options($('filter-resume'),[['',status.preferences.defaultResumeId ? '使用默认简历' : '不显示筛选结论'],...status.resumes.map(resume=>[resume.id,resume.label])]);
+  const resumeId=selected || status.preferences.defaultResumeId;
+  if(status.resumes.some(resume=>resume.id===resumeId))$('filter-resume').value=resumeId;
+  await loadJobs();
   notify('');
 }
 $('refresh').addEventListener('click',()=>run(refresh));
-$('login').addEventListener('click',()=>run(async()=>{await api('open_login');notify('请在普通 Chrome 完成登录');}));
-$('boards-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{
-  const boards=$('boards').value.split('\n').map(value=>value.trim()).filter(Boolean);
-  const saved=await api('set_greenhouse_boards',{boards});$('boards').value=saved.boards.join('\n');notify('目标公司已保存');
-});});
 $('search-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{
   const platform=$('source').value;
-  if(platform==='greenhouse') {
-    const boards=$('boards').value.split('\n').map(value=>value.trim()).filter(Boolean);
-    await api('set_greenhouse_boards',{boards});
-  }
   const result=await api('search_jobs',{platform,query:$('query').value.trim(),cityCode:$('city').value,location:$('location').value.trim(),limit:LIMIT});
   state.offset=0;$('filter-platform').value=platform;$('filter-status').value='';$('filter-query').value='';
   await loadJobs();
@@ -79,6 +67,10 @@ $('search-form').addEventListener('submit',event=>{event.preventDefault();run(as
   else notify(result.message || '读取未完成，请重试',true);
 }, {loading:'正在搜索并保存…'});});
 $('filter-form').addEventListener('submit',event=>{event.preventDefault();state.offset=0;run(async()=>{await loadJobs();notify('');});});
+$('rank').addEventListener('click',()=>run(async()=>{
+  state.ranked=!state.ranked;state.offset=0;$('rank').setAttribute('aria-pressed',String(state.ranked));await loadJobs();notify('');
+}));
+setupImport(async()=>{state.offset=0;$('filter-platform').value='';$('filter-status').value='';$('filter-query').value='';await loadJobs();notify('岗位已导入');});
 for(const [id,mode] of [['list-mode','list'],['board-mode','board']])$(id).addEventListener('click',()=>{
   state.mode=mode;$('list-mode').setAttribute('aria-pressed',String(mode==='list'));$('board-mode').setAttribute('aria-pressed',String(mode==='board'));draw();
 });
@@ -92,6 +84,8 @@ function showJob(job,events) {
   state.selected=job;$('job-title').textContent=job.title;
   $('job-meta').textContent=[job.company,job.location,job.salary || '薪资待核实',platformName(job.platform)].filter(Boolean).join(' · ');
   $('job-link').href=job.applyUrl || job.url;$('job-description').textContent=job.description || '尚未读取完整正文，请点击读详情';
+  $('detail-refresh').hidden=job.platform==='manual';
+  if(job.source==='manual_import')$('job-meta').textContent+=' · 用户提供的正文';
   const latest=events.at(-1);$('progress-status').value=job.status;$('progress-note').value=latest?.note || '';$('follow-up').value=localDate(latest?.follow_up_at);
   renderHistory($('history'),events);renderAssessment($('assessment'),state.jobs.find(value=>value.id===job.id)?.assessment);
 }
@@ -117,7 +111,7 @@ $('progress-form').addEventListener('submit',event=>{event.preventDefault();run(
   status:$('progress-status').value,note:$('progress-note').value,
   followUpAt:$('follow-up').value ? new Date($('follow-up').value).toISOString() : null,
 }),{dialog:true,loading:'正在保存进度…'});});
-if(token)run(refresh);else {
+if(hasAccess)run(refresh);else {
   notify('请从 Codex 重新打开面板',true);$('connection').textContent='面板访问链接已失效';
-  for(const button of document.querySelectorAll('button'))if(button.id!=='theme')button.disabled=true;
+  for(const button of document.querySelectorAll('button'))button.disabled=true;
 }

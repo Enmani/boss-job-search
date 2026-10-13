@@ -33,9 +33,9 @@ test('real browser panel: search, detail, progress, filtering, responsive themes
     page.on('pageerror',error=>errors.push(error.message));
     await page.route('**/*',route=>new URL(route.request().url()).origin===new URL(url).origin ? route.continue() : route.abort());
     await page.goto(url);await page.getByText('还没有岗位记录',{exact:true}).waitFor();
-    await page.locator('#source').selectOption('greenhouse');await page.locator('#companies').evaluate(node=>node.open=true);
-    await page.locator('#boards').fill('https://job-boards.greenhouse.io/sampleco');
-    await page.locator('#boards-form button').click();await page.getByText('目标公司已保存',{exact:true}).waitFor();
+    await page.locator('#settings-link').click();await page.locator('[data-platform="greenhouse"] textarea').fill('https://job-boards.greenhouse.io/sampleco');
+    await page.locator('[data-platform="greenhouse"] button[type="submit"]').click();await page.getByText('目标公司已保存',{exact:true}).waitFor();
+    await page.locator('#home-link').click();await page.locator('#source').selectOption('greenhouse');
     await page.locator('#query').fill('Product');await page.locator('#search-form button').click();
     await page.getByText('已保存 1 个岗位',{exact:true}).waitFor();
     assert.equal(app.store('personal').list()[0].platform,'greenhouse');
@@ -58,7 +58,7 @@ test('real browser panel: search, detail, progress, filtering, responsive themes
     await page.getByRole('button',{name:'查看',exact:true}).click();
     await page.locator('#job-dialog').waitFor({state:'visible'});await page.keyboard.press('Escape');
     await page.locator('#job-dialog').waitFor({state:'hidden'});await page.evaluate(()=>document.documentElement.style.zoom='1');
-    await page.locator('#filter-status').selectOption('拒绝');await page.locator('#filter-form button').click();
+    await page.locator('#filter-status').selectOption('拒绝');await page.locator('#filter-form button[type="submit"]').click();
     await page.getByText('没有符合条件的记录',{exact:true}).waitFor();assert.deepEqual(errors,[]);
     await browser.close();browser=null;await app.close();app=appFor(root);
     const saved=app.store('personal').list()[0];assert.equal(saved.status,'已投递');assert.equal(app.store('personal').history(saved.id).length,2);

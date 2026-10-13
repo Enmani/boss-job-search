@@ -5,7 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Store } from '../plugin/src/store.mjs';
-import { GreenhouseJobs,descriptionText } from '../plugin/src/greenhouse.mjs';
+import { GreenhouseJobs } from '../plugin/src/greenhouse.mjs';
+import { descriptionText } from '../plugin/src/job-text.mjs';
 import { jobSchema,jobIdentity,greenhouseBoard,constraintHints } from '../plugin/src/domain.mjs';
 import { post,greenhouseFetch } from './greenhouse-fixture.mjs';
 

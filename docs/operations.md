@@ -20,7 +20,7 @@ Chrome 扩展启动、更新和浏览器启动时自动连接。`get_status.brow
 
 ## 搜索与详情
 
-`search_jobs.platform` 默认为 boss。Greenhouse 先用 `set_greenhouse_boards` 保存公司招聘页，再以 platform=greenhouse、query、location 搜索。无需 Chrome 或 API 密钥。不同公司的读取结果独立记录；partial 需检查失败公司，不能宣称覆盖完整。`get_job_detail` 根据已保存的平台自动选择读取方式。
+`search_jobs.platform` 默认为 boss。公开接口先在面板设置页或通过 `set_platform_boards` 保存公司，再以 platform=greenhouse/ashby/lever、query、location 搜索。无需 Chrome 或 API 密钥。Lever 欧洲站用完整 `jobs.eu.lever.co` 招聘页。partial 需检查失败公司，不能宣称覆盖完整。`get_job_detail` 按已保存平台选择方式；manual 返回用户提供正文，不声称刷新了网站。
 
 `search_jobs` 接受关键词、九位城市代码和 1–30 条当前页数量；全国代码为 `100010000`。成功结果直接保存到 SQLite。
 
@@ -29,6 +29,14 @@ Chrome 扩展启动、更新和浏览器启动时自动连接。`get_status.brow
 `login_required`、`verification_required`、`layout_unrecognized`、`outside_boss` 和身份/范围变化各有独立状态。只有网页明确没有结果才返回 empty。`open_login` 打开普通 Chrome 登录页，登录与验证由本人完成。
 
 `close_browser` 及 MCP 服务退出只清理当前会话创建的标签。profile 隔离本机求职资料；网页账号仍来自同一个已连接 Chrome 配置。
+
+## 设置与筛选
+
+点击面板右上“设置”。BOSS 卡片“连接”打开本人 Chrome 的登录页，“检测”检查本机桥接；它不判断登录状态。公开平台“保存”只存公司地址，“检测”实际读取已保存公司并附时间。失败保留原因，修改公司后需重新检测。
+
+求职条件中可设置薪资币种与周期、岗位最低经验要求上限及默认简历。未披露条件保持待核实。“筛选排序”使用当前条件和该简历的有效结论，最多最近500个候选；缩小平台、状态或关键词可减少范围。新的语义判断在 Codex 中通过 screening_context、save_assessments 完成，岗位更新后重新评估。
+
+“导入岗位”保存链接、名称与粘贴正文。其他来源不自动抓取或刷新；可重新导入同一链接更新正文，进度和历史保持。已支持平台归到原身份，后续可通过官方读取器刷新。
 
 ## 备份与恢复
 
@@ -41,6 +49,8 @@ Chrome 扩展启动、更新和浏览器启动时自动连接。`get_status.brow
 ## 更新与卸载
 
 更新源码后重新执行 npm ci，并重新安装 Codex 插件。保持原 Chrome 扩展目录可以保留 ID；更新后刷新扩展。源码位置或 Node.js 路径变化时重新运行本机安装器。
+
+v0.3 沿用 user_version=2，无新 DDL；升级前可用 backup_records 保留快照。旧版不识别新增平台记录，回退源码前停止服务并恢复升级前快照。
 
 卸载时，在 Codex 插件页卸载“直聘求职”，在 Chrome 移除对应扩展，然后删除当前用户的 `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.boss_job_search.bridge` 注册项。桥接文件和求职资料位于数据根目录，按自己的保留需求处理；插件更新不会删除资料。
 

@@ -1,18 +1,20 @@
 # 直聘求职 · BOSS Job Search
 
-在 Codex 或本机求职面板中搜索 BOSS 直聘、Greenhouse 岗位，对照自己的简历筛选，并保存求职进度。
+在 Codex 或本机求职面板中搜索 BOSS 直聘、Greenhouse、Ashby、Lever 岗位，导入其他来源的岗位，对照自己的简历筛选，并保存求职进度。
 
-**Windows 预览版 · v0.2.1 · MIT**。非 BOSS 直聘或 Greenhouse 官方项目。
+**Windows 预览版 · v0.3.0 · MIT**。独立开源项目，与招聘平台无隶属关系。
 
-你可以在 Codex 下指令，也可以打开求职面板点击搜索、查看详情和记录进度。BOSS 使用普通 Chrome 的原生扩展；Greenhouse 使用公开岗位接口。两种入口共用本机 SQLite 资料。
+你可以在 Codex 下指令，也可以在求职面板点击搜索、导入、排序和记录进度。BOSS 使用普通 Chrome 的原生扩展；Greenhouse、Ashby、Lever 使用官方公开岗位接口。两种入口共用本机 SQLite 资料。
 
 ## 功能
 
 - 按关键词和城市搜索当前页岗位，读取完整详情。
-- 添加 Greenhouse 公司招聘页，按关键词和地点搜索公开岗位，读取完整正文和薪资范围。
+- 添加 Greenhouse、Ashby、Lever 公司招聘页，按关键词和地点搜索公开岗位，读取完整正文和薪资范围；Lever 支持全球站与欧洲站。
+- 通用导入保存岗位链接与粘贴的正文，可填写明确的薪资范围、币种和周期。
+- 设置页并排列出平台状态与连接、保存、检测按钮，管理目标公司、求职条件、默认简历和主题。
 - 求职面板支持平台、状态、关键词和简历版本筛选，以及列表、进度看板、备注和历史。
 - 导入 PDF、DOCX、TXT、Markdown 简历，可附已确认事实文件。
-- 由 Codex 对照岗位与简历原文，保存匹配依据、缺口和待核实问题。
+- 由 Codex 对照整批岗位与简历原文，保存匹配依据、缺口和待核实问题；按条件与当前结论排序。
 - 记录收藏、沟通、投递、面试、Offer 等进度及历史。
 - 统一岗位结构保留平台、原始岗位编号、链接、币种和计薪周期；按平台内的岗位身份去重。
 - SQLite 本机存储、资料隔离、版本检测与数据库备份；v0.1.3 数据自动升级，升级前保留备份。
@@ -62,9 +64,9 @@ codex plugin add boss-job-search@boss-job-search-local
 
 完整恢复与卸载说明见 [运行说明](docs/operations.md)。插件格式参考 [OpenAI 官方文档](https://developers.openai.com/plugins/build/plugins)。
 
-从 v0.2.0 升级时，更新源码和 Codex 插件，并在原 Chrome 扩展目录中更新文件、刷新扩展。新增的 `alarms` 和 `storage` 权限用于后台有限重连；求职资料沿用原目录。
+升级时更新源码、依赖与 Codex 插件，保留原资料目录。Chrome 扩展可在原目录更新并刷新，保留扩展 ID。v0.3 沿用 v0.2 的本机通信协议与数据库结构。
 
-只使用 Greenhouse 和求职面板时，可跳过 Chrome 扩展与本机通信安装。
+只使用公开岗位接口和求职面板时，可跳过 Chrome 扩展与本机通信安装。
 
 ## 使用
 
@@ -77,8 +79,10 @@ codex plugin add boss-job-search@boss-job-search-local
 - “查看求职进度和需要跟进的岗位。”
 - “打开求职面板。”
 - “添加 https://job-boards.greenhouse.io/anthropic，搜索 Product Manager 岗位。”
+- “添加 https://jobs.ashbyhq.com/openai 和 https://jobs.lever.co/spotify，搜索产品岗位。”
+- “将这段岗位正文导入，按我的简历批量筛选，再排序查看。”
 
-首次使用会询问简历路径、目标岗位和必要偏好。未确认的薪资、搬迁或工作许可条件保持未知。19 个 MCP 工具见 [工具列表](docs/tools.md)。
+首次使用会询问简历路径、目标岗位和必要偏好。未确认的薪资、搬迁或工作许可条件保持未知。24 个 MCP 工具见 [工具列表](docs/tools.md)。
 
 ### 求职面板
 
@@ -88,15 +92,19 @@ codex plugin add boss-job-search@boss-job-search-local
 npm run panel --prefix ./plugin
 ```
 
-命令会保持面板服务运行，并在 Windows 默认浏览器打开页面；关闭命令进程后面板停止。面板支持搜索、查看正文、刷新完整详情、收藏和记录进度。选择简历版本可查看 Codex 已保存的筛选依据；新的简历导入与语义筛选仍在 Codex 中完成。
+命令会保持面板服务运行，并在 Windows 默认浏览器打开页面；关闭命令进程后面板停止。首页保留搜索、岗位导入、筛选排序、详情和进度。简历导入与新的语义筛选在 Codex 中完成；“筛选排序”使用求职条件和 Codex 已存结论，明确显示未筛选、待核实和需复核。
 
-Greenhouse 搜索前，在“目标公司”中填写公司招聘页，每行一个，最多十家。关键词匹配标题、公司和正文，地点匹配地点文字；每次最多保存 30 条，可收窄关键词继续搜索。它只覆盖已添加的公司。[公开接口说明](https://docs.greenhouse.io/job-board.html)
+点击“设置”，在各平台卡片填写公司招聘页，每行一个，每个平台最多十家。“检测”实际读取已保存的公司；“已配置”仅表示保存了地址。Lever 欧洲站填写 `https://jobs.eu.lever.co/公司标识`。
+
+关键词匹配标题、公司和正文，地点匹配主地点及接口提供的其他地点；每次最多保存 30 条，只覆盖已添加的公司。排序最多读取最近 500 个候选，达到上限会提示缩小范围。不同币种或周期不直接比较。接口说明：[Greenhouse](https://docs.greenhouse.io/job-board.html)、[Ashby](https://developers.ashbyhq.com/docs/public-job-posting-api)、[Lever](https://github.com/lever/postings-api)。
+
+“导入岗位”填写链接、名称与正文即可保存，链接不会自动抓取。未知来源标为通用导入；已支持平台的链接归到原岗位身份。原文更新保留求职进度，并使旧筛选结论需要复核。
 
 ## 数据和权限
 
 Chrome 扩展声明 `scripting`、`nativeMessaging`、`alarms`、`storage` 和 `https://www.zhipin.com/*`。它使用 ISOLATED 脚本读取可见岗位内容；定时任务负责有限重连，会话存储只记录连接状态和错误。登录状态由普通 Chrome 管理。
 
-BOSS 通信使用 Native Messaging 和当前用户的 Windows 命名管道。主机只授权安装时指定的扩展 ID，只管理当前会话创建的岗位标签。Greenhouse 只对官方公开接口发起 GET 请求。
+BOSS 通信使用 Native Messaging 和当前用户的 Windows 命名管道。主机只授权安装时指定的扩展 ID，只管理当前会话创建的岗位标签。公开岗位读取器只向官方接口发起 GET 请求。
 
 面板按需监听 `127.0.0.1` 的随机端口，使用临时访问凭据和同源检查。访问链接仅供本机使用，不要分享；服务退出后链接失效。面板不开放简历文件读取或任意系统命令。
 
@@ -105,7 +113,7 @@ BOSS 通信使用 Native Messaging 和当前用户的 Windows 命名管道。主
 ## 当前限制
 
 - BOSS 搜索只覆盖当前页，最多读取 30 条。
-- Greenhouse 仅搜索添加的公司，部分公司失败会分别显示原因；不支持全站搜索。
+- Greenhouse、Ashby、Lever 仅搜索添加的公司，部分公司失败分别显示原因；不支持全站搜索。Ashby、Lever 的公司名称使用招聘页标识。
 - 不同平台的相似岗位不会自动合并。薪资周期未明确时保留未知，不进行汇率换算。
 - 列表薪资特殊字体无法可靠读取时保持未知；需要读详情获取正常金额。
 - 登录和验证码由本人完成。登录遮挡、验证、空白页和布局变化会返回状态。
@@ -121,7 +129,7 @@ npm run precheck
 ./scripts/package-release.ps1
 ```
 
-自动检查覆盖持久化、回滚、引用校验、MCP、本机通信、Greenhouse 接口样例、旧数据迁移，以及真实浏览器中的面板按钮和响应式布局。接口样例使用模拟数据，不能替代真实网站验证。实际网站检查使用独立的临时资料目录：
+自动检查覆盖持久化、批量回滚、引用与版本校验、MCP、本机通信、三种公开接口样例、旧数据迁移，以及浏览器中的设置、导入、排序和进度按钮。接口样例使用模拟数据，不能替代真实网站验证。实际网站检查使用独立的临时资料目录：
 
 ```powershell
 node scripts/live-check.mjs

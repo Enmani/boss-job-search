@@ -1,20 +1,7 @@
 import { z } from 'zod';
-import { compile } from 'html-to-text';
-import { decodeHTML } from 'entities';
+import { descriptionText } from './job-text.mjs';
 import { boardTokenSchema, boardsSchema, jobSchema, TaskError } from './domain.mjs';
 
-const toText=compile({wordwrap:false,limits:{maxInputLength:1000000},selectors:[
-  {selector:'a',options:{ignoreHref:true}},{selector:'img',format:'skip'},
-  {selector:'h1',options:{uppercase:false}},{selector:'h2',options:{uppercase:false}},
-  {selector:'h3',options:{uppercase:false}},
-]});
-export function descriptionText(content) {
-  // Greenhouse can return entity-encoded markup as well as ordinary HTML.
-  // Decode markup before conversion; plain-text rendering never executes it.
-  let html=content;
-  for(let pass=0;pass<2 && /&(?:amp;)?lt;\/?(?:p|div|ul|li|br|h[1-6]|strong|span)\b/i.test(html);pass++) html=decodeHTML(html);
-  return toText(html).trim();
-}
 const postSchema=z.object({
   id:z.number().int().positive().safe(),title:z.string().min(1).max(500),
   company_name:z.string().max(500).optional(),location:z.object({name:z.string().max(300)}),

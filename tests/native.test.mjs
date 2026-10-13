@@ -48,7 +48,7 @@ test('native pipe authentication, concurrent busy state, page gates and wrong de
   } finally {await browser.close();await fixture.close();}
 });
 
-for(const version of ['0.2.0','0.2.1'])test(`extension ${version} uses the same native protocol without tying compatibility to its release version`,async()=>{
+for(const version of ['0.2.0','0.2.1','0.3.0'])test(`extension ${version} uses the same native protocol without tying compatibility to its release version`,async()=>{
   const fixture=await nativeFixture({version}),browser=new BossBrowser(fixture.directory);browser.configPath=fixture.configPath;
   try {
     const status=await browser.status();assert.equal(status.state,'connected');assert.equal(status.extensionVersion,version);
