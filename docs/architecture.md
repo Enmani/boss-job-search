@@ -2,13 +2,15 @@
 
 Codex 的 stdio MCP 通过当前用户的 Windows 命名管道向 Chrome Native Messaging 主机发送请求。普通 Chrome 的求职扩展保持本机连接，打开正常岗位网址，以 ISOLATED 脚本读取可见文字，返回给 MCP 完成校验和 SQLite 保存。
 
-入口包括 Codex 的 stdio MCP 与按需启动的本机 HTTP 面板。二者使用 `actions.mjs` 中相同的参数校验和业务动作：按平台选择 BOSS 原生浏览器或 Greenhouse、Ashby、Lever 公开 GET 接口，再保存到 SQLite。通用导入只保存明确提供的字段和正文，不访问导入链接。
+入口包括 Codex 的 stdio MCP 与按需启动的本机 HTTP 面板。二者使用 `actions.mjs` 中相同的参数校验和业务动作：按平台选择 BOSS 原生浏览器、Greenhouse/Ashby/Lever 公开 GET 接口或 LinkedIn 访客页面，再保存到 SQLite。通用导入只保存明确提供的字段和正文，不访问导入链接。
 
 BOSS 数据流：MCP/面板 → 命名管道 → Native Messaging → 原生扩展 → BOSS 页面；结果沿原路返回。不读取 Cookie、登录令牌或页面隐藏状态，不重放私有接口，不修改网站检测。Playwright 用于浏览器测试与独立的真实 Greenhouse 面板验收，不接管本人 BOSS 浏览器。
 
 Greenhouse 数据流：MCP/面板 → `boards-api.greenhouse.io/v1/boards/<board>` → 统一岗位结构 → SQLite。公司标识经过校验，请求只访问固定官方域名，不跟随重定向。JSON 响应最大 24 MiB、单次读取限时 15 秒。公司读取失败分别保留，部分成功返回 partial，全失败返回 failed；只有有效数据中没有匹配才返回 empty。
 
 Ashby 使用 `api.ashbyhq.com/posting-api/job-board/<board>?includeCompensation=true`，只列出 isListed 岗位，基本工资与股权等组件分开处理。详情在该公司的当前列表按身份查找，下架不返回旧正文成功。Lever 使用 `api.lever.co` 或 `api.eu.lever.co/v0/postings/<site>`，每页100条、最多10000条，重复分页或达到上限明确失败；正文包括 description、lists 与 additional。二者复用有超时、响应上限与明确错误码的 GET 传输及按公司汇总，不把部分失败变成空搜索。
+
+LinkedIn 使用固定 `www.linkedin.com` 的访客列表路径和规范详情链接，以 htmlparser2 读取 HTML，不执行网页脚本。列表按实际消费卡片推进偏移，详情同时核对 canonical/og:url 中的岗位编号，主要字段与正文缺失则失败。传输不带 Cookie、不跟随跳转，限时15秒、响应上限4 MiB；同一进程只读一项，请求间隔三秒，429后至少冷却五分钟或遵从更长 Retry-After，无自动重试。登录、验证和未知布局分别失败，不使用代理或处理验证码。
 
 面板监听 `127.0.0.1` 随机端口，访问凭据由进程生成，通过 URL fragment 提供给前端，API 使用 Bearer 请求头。同源、Host、CSP 与动作白名单限制访问。简历文件读取、任意脚本和系统命令不在面板 API 内。服务退出关闭端口和自身浏览器标签。
 
@@ -26,7 +28,9 @@ Ashby 使用 `api.ashbyhq.com/posting-api/job-board/<board>?includeCompensation=
 
 ## 岗位与筛选
 
-岗位身份为 platform + boardToken + platformJobId，Lever 额外包含 region，全球站与欧洲站互不混淆。BOSS 的 boardToken 为空；Greenhouse 旧新域名归到相同身份。通用来源以规范链接为身份，删除明确的跟踪参数，保留其他查询与路由片段，不抓取链接。已支持平台的手工材料使用原平台身份。不同平台不按相似标题合并。
+岗位身份为 platform + boardToken + platformJobId，Lever 额外包含 region，全球站与欧洲站互不混淆。BOSS 和 LinkedIn 的 boardToken 为空；Greenhouse 旧新域名归到相同身份。LinkedIn 数字、带标题、地区域名及 currentJobId 链接归到相同编号，含冲突编号的链接拒绝。通用来源以规范链接为身份，删除明确的跟踪参数，保留其他查询与路由片段，不抓取链接。已支持平台的手工材料使用原平台身份。不同平台不按相似标题合并。
+
+新增平台在写入时查找旧 manual 记录的规范身份，以原记录 ID 接续进度与历史，不新建副本；多个旧记录或新旧记录冲突则回滚，交由本人核对。未识别的旧链接保留原记录，不阻碍其他岗位写入。LinkedIn 列表更新保留已有正文，明确元数据变化仍使旧筛选需要复核。
 
 BOSS 列表不能覆盖已读取的完整正文、公司全称和地址；空薪资、经验和学历不清除已有值。Greenhouse 搜索返回完整正文，未包含薪资结构时保留此前详情的金额。正文或实质字段改变会更新 revision，使旧筛选失效；只有读取来源改变时不会使结论过期。
 

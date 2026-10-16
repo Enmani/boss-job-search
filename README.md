@@ -1,15 +1,18 @@
 # 直聘求职 · BOSS Job Search
 
-在 Codex 或本机求职面板中搜索 BOSS 直聘、Greenhouse、Ashby、Lever 岗位，导入其他来源的岗位，对照自己的简历筛选，并保存求职进度。
+在 Codex 或本机求职面板中搜索 BOSS 直聘、Greenhouse、Ashby、Lever 和 LinkedIn 岗位，导入其他来源的岗位，对照自己的简历筛选，并保存求职进度。
 
 **Windows 预览版 · v0.3.0 · MIT**。独立开源项目，与招聘平台无隶属关系。
 
-你可以在 Codex 下指令，也可以在求职面板点击搜索、导入、排序和记录进度。BOSS 使用普通 Chrome 的原生扩展；Greenhouse、Ashby、Lever 使用官方公开岗位接口。两种入口共用本机 SQLite 资料。
+当前源码新增 LinkedIn 实验接入，尚未包含在 v0.3.0 发布包中。
+
+你可以在 Codex 下指令，也可以在求职面板点击搜索、导入、排序和记录进度。BOSS 使用普通 Chrome 的原生扩展；Greenhouse、Ashby、Lever 使用官方公开岗位接口；LinkedIn 读取免登录访客列表和公开详情页。两种入口共用本机 SQLite 资料。
 
 ## 功能
 
 - 按关键词和城市搜索当前页岗位，读取完整详情。
 - 添加 Greenhouse、Ashby、Lever 公司招聘页，按关键词和地点搜索公开岗位，读取完整正文和薪资范围；Lever 支持全球站与欧洲站。
+- LinkedIn 实验支持关键词、地点和下一批岗位，读取所选公开正文，接入现有简历筛选与进度记录。
 - 通用导入保存岗位链接与粘贴的正文，可填写明确的薪资范围、币种和周期。
 - 设置页并排列出平台状态与连接、保存、检测按钮，管理目标公司、求职条件、默认简历和主题。
 - 求职面板支持平台、状态、关键词和简历版本筛选，以及列表、进度看板、备注和历史。
@@ -80,6 +83,7 @@ codex plugin add boss-job-search@boss-job-search-local
 - “打开求职面板。”
 - “添加 https://job-boards.greenhouse.io/anthropic，搜索 Product Manager 岗位。”
 - “添加 https://jobs.ashbyhq.com/openai 和 https://jobs.lever.co/spotify，搜索产品岗位。”
+- “搜索 LinkedIn 的 AI Product 岗位，地点 Milan, Italy，读取候选的完整详情。”
 - “将这段岗位正文导入，按我的简历批量筛选，再排序查看。”
 
 首次使用会询问简历路径、目标岗位和必要偏好。未确认的薪资、搬迁或工作许可条件保持未知。24 个 MCP 工具见 [工具列表](docs/tools.md)。
@@ -96,6 +100,8 @@ npm run panel --prefix ./plugin
 
 点击“设置”，在各平台卡片填写公司招聘页，每行一个，每个平台最多十家。“检测”实际读取已保存的公司；“已配置”仅表示保存了地址。Lever 欧洲站填写 `https://jobs.eu.lever.co/公司标识`。
 
+LinkedIn 不需要公司配置、Chrome 扩展或登录。首页选择“LinkedIn（实验）”，填写关键词与地点；点击“下一批”继续访客列表。“读详情”读取所选岗位正文。设置页显示读取状态、冷却时间，提供“检测”和“打开原站”。出现登录或验证要求时停止读取，插件不会接入账号登录态。
+
 关键词匹配标题、公司和正文，地点匹配主地点及接口提供的其他地点；每次最多保存 30 条，只覆盖已添加的公司。排序最多读取最近 500 个候选，达到上限会提示缩小范围。不同币种或周期不直接比较。接口说明：[Greenhouse](https://docs.greenhouse.io/job-board.html)、[Ashby](https://developers.ashbyhq.com/docs/public-job-posting-api)、[Lever](https://github.com/lever/postings-api)。
 
 “导入岗位”填写链接、名称与正文即可保存，链接不会自动抓取。未知来源标为通用导入；已支持平台的链接归到原岗位身份。原文更新保留求职进度，并使旧筛选结论需要复核。
@@ -104,7 +110,7 @@ npm run panel --prefix ./plugin
 
 Chrome 扩展声明 `scripting`、`nativeMessaging`、`alarms`、`storage` 和 `https://www.zhipin.com/*`。它使用 ISOLATED 脚本读取可见岗位内容；定时任务负责有限重连，会话存储只记录连接状态和错误。登录状态由普通 Chrome 管理。
 
-BOSS 通信使用 Native Messaging 和当前用户的 Windows 命名管道。主机只授权安装时指定的扩展 ID，只管理当前会话创建的岗位标签。公开岗位读取器只向官方接口发起 GET 请求。
+BOSS 通信使用 Native Messaging 和当前用户的 Windows 命名管道。主机只授权安装时指定的扩展 ID，只管理当前会话创建的岗位标签。公开接口只向固定官方域名发起 GET 请求；LinkedIn 只向固定站点读取公开 HTML，不使用账号 Cookie。
 
 面板按需监听 `127.0.0.1` 的随机端口，使用临时访问凭据和同源检查。访问链接仅供本机使用，不要分享；服务退出后链接失效。面板不开放简历文件读取或任意系统命令。
 
@@ -114,6 +120,7 @@ BOSS 通信使用 Native Messaging 和当前用户的 Windows 命名管道。主
 
 - BOSS 搜索只覆盖当前页，最多读取 30 条。
 - Greenhouse、Ashby、Lever 仅搜索添加的公司，部分公司失败分别显示原因；不支持全站搜索。Ashby、Lever 的公司名称使用招聘页标识。
+- LinkedIn 使用非稳定的访客页面，可能限流、要求登录或改变布局。每次只读一页，页大小由网站决定；后续偏移上限1000。请求间隔至少三秒，429 后至少冷却五分钟或遵从更长的 Retry-After，不自动重试。薪资仅保留原文，不猜测币种或周期。
 - 不同平台的相似岗位不会自动合并。薪资周期未明确时保留未知，不进行汇率换算。
 - 列表薪资特殊字体无法可靠读取时保持未知；需要读详情获取正常金额。
 - 登录和验证码由本人完成。登录遮挡、验证、空白页和布局变化会返回状态。
@@ -135,8 +142,11 @@ npm run precheck
 node scripts/live-check.mjs
 # 已安装并连接 BOSS 扩展时，同时检查 BOSS：
 node scripts/live-check.mjs --boss
+# 单独检查 LinkedIn 公开读取；两个命令分别产生真实请求：
+node scripts/linkedin-live-check.mjs
+node scripts/linkedin-live-check.mjs --panel
 ```
 
-真实接口检查结果见 [版本记录](CHANGELOG.md)。
+真实接口检查结果见 [版本记录](CHANGELOG.md)，LinkedIn 的接口选择与读取边界见 [接入说明](docs/linkedin.md)。
 
 [架构](docs/architecture.md) · [运行说明](docs/operations.md) · [后续工作](TODO.md) · [MIT 许可证](LICENSE)

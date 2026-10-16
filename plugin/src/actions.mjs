@@ -5,10 +5,11 @@ import { randomUUID } from 'node:crypto';
 import { Store } from './store.mjs';
 import { loadResume } from './resume.mjs';
 import { profileSchema,preferencesSchema,assessmentSchema,jobSchema,compensationSchema,statuses,platforms,searchPlatforms,boardsSchema,
-  constraintHints,completeDescription,TaskError } from './domain.mjs';
+  constraintHints,completeDescription,knownJobIdentity,TaskError } from './domain.mjs';
 import { publicPlatforms,boardInputs,platformBoards } from './boards.mjs';
 import { AshbyJobs } from './ashby.mjs';
 import { LeverJobs } from './lever.mjs';
+import { LinkedInJobs } from './linkedin.mjs';
 import { rankJobs } from './ranking.mjs';
 
 const identity={profile:profileSchema},uuid=z.string().uuid();
@@ -25,9 +26,9 @@ export function failure(error) {
     : error instanceof z.ZodError ? {code:'INVALID_INPUT',message:'输入格式不正确，请核对参数。'}
     : {code:'OPERATION_FAILED',message:'操作失败，请检查文件权限、数据库和运行环境。'};
 }
-export function createActions(root,browser,greenhouse,{ashby=new AshbyJobs(),lever=new LeverJobs()}={}) {
+export function createActions(root,browser,greenhouse,{ashby=new AshbyJobs(),lever=new LeverJobs(),linkedin=new LinkedInJobs()}={}) {
   const stores=new Map(),tools=new Map();
-  const providers={greenhouse,ashby,lever};
+  const providers={greenhouse,ashby,lever,linkedin};
   const store=profile=>{
     profile=profileSchema.parse(profile);
     if(!stores.has(profile))stores.set(profile,new Store(join(root,profile)));
@@ -38,6 +39,7 @@ export function createActions(root,browser,greenhouse,{ashby=new AshbyJobs(),lev
   tool('get_status','查看本机求职资料、浏览器连接、目标公司和最近搜索记录。',identity,false,async ({profile})=>({
     browser:await browser.status(profile),resumes:store(profile).resumes(),preferences:store(profile).preferences(),
     greenhouseBoards:store(profile).boards(),platforms:publicPlatforms.map(platform=>({platform,boards:store(profile).boards(platform),lastCheck:store(profile).setting(`${platform}_check`)})),
+    linkedin:{...linkedin.status(),lastCheck:store(profile).setting('linkedin_check')},
     recentSearches:store(profile).recentSearches(),dataDirectory:join(root,profile),
   }));
   tool('open_login','在普通 Chrome 打开 BOSS 登录页；登录和验证码由本人完成。',identity,true,({profile})=>browser.login(profile),{external:true});
@@ -48,31 +50,38 @@ export function createActions(root,browser,greenhouse,{ashby=new AshbyJobs(),lev
   tool('set_platform_boards','保存 Greenhouse、Ashby 或 Lever 的目标公司。Lever 欧洲站请提供 jobs.eu.lever.co 招聘页。',{
     ...identity,platform:z.enum(publicPlatforms),boards:boardInputs,
   },true,({profile,platform,boards})=>({platform,boards:store(profile).setBoards(boards,platform)}));
-  tool('check_platform','实际检测平台读取状态。BOSS 查看本机桥接连接；公开接口检测已配置公司，结果附检测时间。',{
+  tool('check_platform','实际检测平台读取状态。BOSS 查看本机桥接；公开接口检测已配置公司；LinkedIn 实验读取访客页。结果附检测时间。',{
     ...identity,platform:z.enum(searchPlatforms),
   },true,async ({profile,platform})=>{
     const checkedAt=new Date().toISOString(),db=store(profile);
     if(platform==='boss')return {platform,checkedAt,...await browser.status(profile)};
+    if(platform==='linkedin') {
+      let check;
+      try{check={platform,checkedAt,...await linkedin.check()};}
+      catch(error){check={platform,checkedAt,...linkedin.status(),...failure(error)};}
+      db.setSetting('linkedin_check',check);return check;
+    }
     const boards=db.boards(platform);
     const result=boards.length ? await providers[platform].search({boards,query:'',location:'',limit:1}) : {state:'not_configured',boards:[]};
     if(JSON.stringify(db.boards(platform))!==JSON.stringify(boards))throw new TaskError('PLATFORM_CONFIGURATION_CHANGED','目标公司已更新，请重新检测。');
     const check={platform,checkedAt,state:result.state,boards:result.boards};db.setSetting(`${platform}_check`,check);return check;
   },{external:true});
-  tool('search_jobs','搜索并保存岗位。BOSS 通过普通 Chrome；Greenhouse、Ashby、Lever 通过公开接口搜索已添加公司的标题和正文。部分失败标记 partial，不能当作零结果。',{
+  tool('search_jobs','搜索并保存岗位。BOSS 使用普通 Chrome；Greenhouse、Ashby、Lever 搜索已添加公司；LinkedIn 实验性读取免登录访客列表，用 pageOffset 继续下一页，限流不重试。失败不能当作零结果。',{
     ...identity,platform:z.enum(searchPlatforms).default('boss'),query:z.string().trim().min(1).max(100),
     cityCode:z.string().regex(/^\d{9}$/).default('100010000'),location:z.string().trim().max(100).default(''),
-    boardTokens:boardInputs.optional(),limit:z.number().int().min(1).max(30).default(15),
-  },true,async ({profile,platform,boardTokens,...input})=>{
-    const db=store(profile),boards=platform==='boss' ? [] : platformBoards(platform,boardTokens ?? db.boards(platform));
+    boardTokens:boardInputs.optional(),limit:z.number().int().min(1).max(30).default(15),pageOffset:z.number().int().min(0).max(1000).default(0),
+  },true,async ({profile,platform,boardTokens,pageOffset,...input})=>{
+    const db=store(profile),boards=publicPlatforms.includes(platform) ? platformBoards(platform,boardTokens ?? db.boards(platform)) : [];
     const scope=platform==='boss' ? {query:input.query,cityCode:input.cityCode,limit:input.limit}
+      : platform==='linkedin' ? {query:input.query,location:input.location,limit:input.limit,offset:pageOffset}
       : {query:input.query,location:input.location,limit:input.limit,boards};
-    if(platform!=='boss' && !boards.length)throw new TaskError(`${platform.toUpperCase()}_BOARDS_REQUIRED`,'请先在设置中添加目标公司。');
+    if(publicPlatforms.includes(platform) && !boards.length)throw new TaskError(`${platform.toUpperCase()}_BOARDS_REQUIRED`,'请先在设置中添加目标公司。');
     const run=db.recordSearch({platform,...scope,state:'running'});
     try {
       const page=platform==='boss' ? await browser.search(profile,scope) : await providers[platform].search(scope);
       const jobs=['ready','partial'].includes(page.state) ? db.upsertJobs(page.jobs) : [];
       const record=db.finishSearch(run.id,{state:page.state,count:jobs.length,searchUrl:page.searchUrl,
-        coverage:page.coverage,boards:page.boards,matched:page.matched,returned:page.returned});
+        coverage:page.coverage,boards:page.boards,matched:page.matched,returned:page.returned,nextOffset:page.nextOffset});
       return {state:page.state,message:blockedMessages[page.state] || '',jobs,search:record};
     } catch(error) {db.finishSearch(run.id,{state:'failed',...failure(error)});throw error;}
   },{external:true});
@@ -80,8 +89,9 @@ export function createActions(root,browser,greenhouse,{ashby=new AshbyJobs(),lev
     ...identity,jobId:uuid,
   },true,async ({profile,jobId})=>{
     const db=store(profile),job=db.job(jobId);
-    if(job.platform==='manual')return {state:'user_provided',message:'此正文由用户提供，可重新导入更新。',job};
-    const page=job.platform==='boss' ? await browser.detail(profile,job.url) : await providers[job.platform].detail(job);
+    const current=job.platform==='manual' ? {...job,...(knownJobIdentity(job.url) || {})} : job;
+    if(current.platform==='manual')return {state:'user_provided',message:'此正文由用户提供，可重新导入更新。',job};
+    const page=current.platform==='boss' ? await browser.detail(profile,current.url) : await providers[current.platform].detail(current);
     if(page.state!=='detail')return {state:page.state,message:blockedMessages[page.state] || '详情尚未读取。',jobId};
     return {state:'detail',job:db.upsertJobs([page.detail])[0]};
   },{external:true});

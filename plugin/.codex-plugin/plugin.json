@@ -1,7 +1,7 @@
 {
   "name": "boss-job-search",
   "version": "0.3.0",
-  "description": "搜索 BOSS、Greenhouse、Ashby 和 Lever 岗位，导入其他岗位，按本机简历批量筛选并记录进度。",
+  "description": "搜索 BOSS、Greenhouse、Ashby、Lever 岗位，实验接入 LinkedIn，按本机简历批量筛选并记录进度。",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {

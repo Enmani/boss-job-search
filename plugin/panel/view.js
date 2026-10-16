@@ -1,5 +1,5 @@
 export const statuses=['待筛选','收藏','准备投递','已沟通','已投递','面试','Offer','拒绝','撤回'];
-export const platformName=value=>({boss:'BOSS 直聘',greenhouse:'Greenhouse',ashby:'Ashby',lever:'Lever',manual:'通用导入'})[value] || value;
+export const platformName=value=>({boss:'BOSS 直聘',greenhouse:'Greenhouse',ashby:'Ashby',lever:'Lever',linkedin:'LinkedIn',manual:'通用导入'})[value] || value;
 export function element(tag,text,className) {
   const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(className)node.className=className;return node;
 }

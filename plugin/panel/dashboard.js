@@ -3,7 +3,7 @@ import {api,hasAccess} from './client.js';
 import {setupImport} from './import.js';
 
 const $=id=>document.getElementById(id);
-const state={jobs:[],mode:'list',offset:0,selected:null,busy:false,pendingProgress:null,ranked:false,hasMore:false};
+const state={jobs:[],mode:'list',offset:0,selected:null,busy:false,pendingProgress:null,ranked:false,hasMore:false,nextSearch:null};
 const LIMIT=30;
 options($('filter-status'),statuses.map(status=>[status,status]));
 options($('progress-status'),statuses.map(status=>[status,status]));
@@ -16,8 +16,9 @@ async function run(action,{dialog=false,loading='正在读取…'}={}) {
   for(const [button] of disabled)if(!['close-dialog','import-close'].includes(button.id))button.disabled=true;
   try {await action();}
   catch(error) {notify(error.message || '连接失败，请重试',true,dialog);}
-  finally {state.busy=false;for(const [button,wasDisabled] of disabled)button.disabled=wasDisabled;updatePagination();}
+  finally {state.busy=false;for(const [button,wasDisabled] of disabled)button.disabled=wasDisabled;updatePagination();updateSearchNext();}
 }
+function updateSearchNext() {$('search-next').hidden=!state.nextSearch;$('search-next').disabled=state.busy || !state.nextSearch;}
 function updatePagination() {$('previous').disabled=state.busy || state.offset===0;$('next').disabled=state.busy || (state.ranked ? !state.hasMore : state.jobs.length<LIMIT);}
 function filters() {
   return {limit:LIMIT,offset:state.offset,query:$('filter-query').value.trim(),
@@ -38,9 +39,11 @@ async function loadJobs() {
 }
 function sourceChanged() {
   const publicApi=$('source').value!=='boss';$('city-field').hidden=publicApi;$('location-field').hidden=!publicApi;
-  $('scope').textContent=publicApi ? '仅搜索设置中添加的公司' : '读取当前页，最多 30 个岗位';
+  $('scope').textContent=$('source').value==='linkedin' ? '访客列表实验接入，可能限流' : publicApi ? '仅搜索设置中添加的公司' : '读取当前页，最多 30 个岗位';
+  state.nextSearch=null;updateSearchNext();
 }
 $('source').addEventListener('change',sourceChanged);sourceChanged();
+for(const id of ['query','location'])$(id).addEventListener('input',()=>{state.nextSearch=null;updateSearchNext();});
 async function refresh() {
   const status=await api('get_status');
   $('connection').textContent='本机求职资料已连接';
@@ -52,9 +55,12 @@ async function refresh() {
   notify('');
 }
 $('refresh').addEventListener('click',()=>run(refresh));
-$('search-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{
-  const platform=$('source').value;
-  const result=await api('search_jobs',{platform,query:$('query').value.trim(),cityCode:$('city').value,location:$('location').value.trim(),limit:LIMIT});
+async function searchPage(scope) {
+  state.nextSearch=null;updateSearchNext();
+  const result=await api('search_jobs',scope),platform=scope.platform;
+  if(platform==='linkedin' && result.state==='ready' && result.search.nextOffset!=null &&
+    $('source').value===platform && $('query').value.trim()===scope.query && $('location').value.trim()===scope.location)
+    state.nextSearch={...scope,pageOffset:result.search.nextOffset};
   state.offset=0;$('filter-platform').value=platform;$('filter-status').value='';$('filter-query').value='';
   await loadJobs();
   $('search-result').replaceChildren();
@@ -65,7 +71,10 @@ $('search-form').addEventListener('submit',event=>{event.preventDefault();run(as
   if(result.state==='ready')notify(`已保存 ${result.jobs.length} 个岗位`);
   else if(result.state==='empty')notify('本次搜索没有符合条件的岗位');
   else notify(result.message || '读取未完成，请重试',true);
-}, {loading:'正在搜索并保存…'});});
+}
+$('search-form').addEventListener('submit',event=>{event.preventDefault();run(()=>searchPage({platform:$('source').value,query:$('query').value.trim(),
+  cityCode:$('city').value,location:$('location').value.trim(),limit:LIMIT}),{loading:'正在搜索并保存…'});});
+$('search-next').addEventListener('click',()=>{if(state.nextSearch)run(()=>searchPage(state.nextSearch),{loading:'正在读取下一批…'});});
 $('filter-form').addEventListener('submit',event=>{event.preventDefault();state.offset=0;run(async()=>{await loadJobs();notify('');});});
 $('rank').addEventListener('click',()=>run(async()=>{
   state.ranked=!state.ranked;state.offset=0;$('rank').setAttribute('aria-pressed',String(state.ranked));await loadJobs();notify('');

@@ -17,8 +17,8 @@ export const preferencesSchema = z.object({
 }).strict();
 
 export function normalizeText(text) { return text.replace(/\s+/g, ' ').trim(); }
-export const platforms = ['boss', 'greenhouse', 'ashby', 'lever', 'manual'];
-export const searchPlatforms = ['boss', 'greenhouse', 'ashby', 'lever'];
+export const platforms = ['boss', 'greenhouse', 'ashby', 'lever', 'linkedin', 'manual'];
+export const searchPlatforms = ['boss', 'greenhouse', 'ashby', 'lever', 'linkedin'];
 export const boardTokenSchema = z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/);
 export function greenhouseBoard(value) {
   if (!value.includes('://')) return boardTokenSchema.parse(value);
@@ -33,6 +33,13 @@ export const boardsSchema = z.array(z.string().trim().min(1).max(500).transform(
 export function jobIdentity(value, {allowManual=false}={}) {
   let url; try {url = new URL(value);} catch {throw new TaskError('INVALID_JOB_URL','岗位链接格式不正确。');}
   if (!url.username && !url.password) {
+    if(url.protocol==='https:' && !url.port && /^(?:(?:www|[a-z]{2,3})\.)?linkedin\.com$/.test(url.hostname)) {
+      const path=url.pathname.match(/^\/jobs\/view\/(?:[^/]+-)?([1-9]\d{0,19})\/?$/);
+      const ids=url.searchParams.getAll('currentJobId');
+      const conflicting=path && ids.length && (ids.length!==1 || ids[0]!==path[1]);
+      const id=conflicting ? null : path?.[1] || (/^\/jobs\/(?:search|collections\/[^/]+)\/?$/.test(url.pathname) && ids.length===1 && /^[1-9]\d{0,19}$/.test(ids[0]) ? ids[0] : null);
+      if(id)return {platform:'linkedin',boardToken:'',platformJobId:id,url:`https://www.linkedin.com/jobs/view/${id}`};
+    }
     const boss = url.pathname.match(/^\/job_detail\/([a-zA-Z0-9_-]+)\.html$/);
     if (url.origin === 'https://www.zhipin.com' && boss)
       return {platform:'boss',boardToken:'',platformJobId:boss[1],url:url.origin+url.pathname};
@@ -48,7 +55,8 @@ export function jobIdentity(value, {allowManual=false}={}) {
         url:`${url.origin}/${ats[1]}/${ats[2].toLowerCase()}`};
     }
     if (allowManual && ['http:','https:'].includes(url.protocol) &&
-        !['www.zhipin.com','boards.greenhouse.io','job-boards.greenhouse.io','jobs.ashbyhq.com','jobs.lever.co','jobs.eu.lever.co'].includes(url.hostname)) {
+        !['www.zhipin.com','boards.greenhouse.io','job-boards.greenhouse.io','jobs.ashbyhq.com','jobs.lever.co','jobs.eu.lever.co'].includes(url.hostname) &&
+        !/(?:^|\.)linkedin\.com$/.test(url.hostname)) {
       for (const key of [...url.searchParams.keys()]) if (/^utm_|^(gclid|fbclid)$/i.test(key)) url.searchParams.delete(key);
       url.searchParams.sort();
       if (url.href.length > 2000) throw new TaskError('INVALID_JOB_URL','岗位链接过长。');
@@ -58,6 +66,10 @@ export function jobIdentity(value, {allowManual=false}={}) {
   throw new TaskError('INVALID_JOB_URL', '请提供有效岗位链接；其他平台请使用通用导入。');
 }
 export function jobUrl(value) {return jobIdentity(value).url;}
+export function knownJobIdentity(value) {
+  try{return jobIdentity(value);}
+  catch(error){if(error instanceof TaskError && error.code==='INVALID_JOB_URL')return null;throw error;}
+}
 export const compensationSchema = z.object({
   min:z.number().nonnegative(),max:z.number().nonnegative(),currency:z.string().regex(/^[A-Z]{3}$/),
   period:z.enum(['hour','day','month','year','unknown']),label:z.string().max(300).default(''),
@@ -72,7 +84,7 @@ export const jobSchema = z.object({
   locations: z.array(z.string().max(300)).max(100).optional(),
   salary: z.string().max(200).default(''), experience: z.string().max(200).default(''),
   degree: z.string().max(200).default(''), description: z.string().max(100000).default(''),
-  rawText: z.string().trim().min(1).max(120000), source: z.enum(['boss_search', 'boss_detail', 'browser_import','greenhouse_search','greenhouse_detail','ashby_search','ashby_detail','lever_search','lever_detail','manual_import']),
+  rawText: z.string().trim().min(1).max(120000), source: z.enum(['boss_search', 'boss_detail', 'browser_import','greenhouse_search','greenhouse_detail','ashby_search','ashby_detail','lever_search','lever_detail','linkedin_search','linkedin_detail','manual_import']),
 }).transform((job,context) => {
   const identity=jobIdentity(job.url,{allowManual:job.source==='manual_import'});
   for(const field of ['platform','platformJobId','boardToken','region']) {
@@ -87,7 +99,7 @@ export const jobSchema = z.object({
     compensation:identity.platform === 'boss' ? range ? [{...range,currency:'CNY',period:'month',label:''}] : [] : job.compensation};
 });
 export function completeDescription(job) {
-  return ['boss_detail','greenhouse_search','greenhouse_detail','ashby_search','ashby_detail','lever_search','lever_detail'].includes(job.source) && !!job.description.trim();
+  return ['boss_detail','greenhouse_search','greenhouse_detail','ashby_search','ashby_detail','lever_search','lever_detail','linkedin_detail'].includes(job.source) && !!job.description.trim();
 }
 export const assessmentSchema = z.object({
   decision: z.enum(['推荐', '待核实', '不符合']), summary: z.string().trim().min(1).max(2000),

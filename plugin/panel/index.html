@@ -16,7 +16,7 @@
       <h2 id="search-title">搜索岗位</h2>
       <form id="search-form">
         <div class="form-grid">
-          <label>岗位来源<select id="source"><option value="boss">BOSS 直聘</option><option value="greenhouse">Greenhouse</option><option value="ashby">Ashby</option><option value="lever">Lever</option></select></label>
+          <label>岗位来源<select id="source"><option value="boss">BOSS 直聘</option><option value="greenhouse">Greenhouse</option><option value="ashby">Ashby</option><option value="lever">Lever</option><option value="linkedin">LinkedIn（实验）</option></select></label>
           <label class="wide">搜索关键词<input id="query" required maxlength="100" placeholder="AI 产品 / Product Manager"></label>
           <label id="city-field">搜索城市<select id="city"><option value="100010000">全国</option><option value="101010100">北京</option><option value="101020100">上海</option><option value="101280100">广州</option><option value="101280600">深圳</option><option value="101210100">杭州</option></select></label>
           <label id="location-field" hidden>岗位地点<input id="location" maxlength="100" placeholder="London"></label>
@@ -25,11 +25,12 @@
       </form>
       <p id="scope" class="muted">读取当前页，最多 30 个岗位</p>
       <div id="search-result" class="muted" aria-live="polite"></div>
+      <button id="search-next" type="button" hidden>下一批</button>
     </section>
     <section aria-labelledby="records-title">
       <div class="section-header"><h2 id="records-title">求职记录</h2><div class="tabs" role="group" aria-label="显示方式"><button id="list-mode" type="button" aria-pressed="true">岗位</button><button id="board-mode" type="button" aria-pressed="false">进度</button></div></div>
       <form id="filter-form" class="filters">
-        <label>平台筛选<select id="filter-platform"><option value="">全部平台</option><option value="boss">BOSS 直聘</option><option value="greenhouse">Greenhouse</option><option value="ashby">Ashby</option><option value="lever">Lever</option><option value="manual">通用导入</option></select></label>
+        <label>平台筛选<select id="filter-platform"><option value="">全部平台</option><option value="boss">BOSS 直聘</option><option value="greenhouse">Greenhouse</option><option value="ashby">Ashby</option><option value="lever">Lever</option><option value="linkedin">LinkedIn</option><option value="manual">通用导入</option></select></label>
         <label>求职状态<select id="filter-status"><option value="">全部状态</option></select></label>
         <label>简历版本<select id="filter-resume"><option value="">不显示筛选结论</option></select></label>
         <label class="wide">记录关键词<input id="filter-query" maxlength="100" placeholder="公司、岗位或地点"></label>

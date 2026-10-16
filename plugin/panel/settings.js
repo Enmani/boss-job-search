@@ -9,7 +9,8 @@ async function run(action) {
   try{await action();}catch(error){notify(error.message,true);}finally{busy=false;buttons.forEach(button=>button.disabled=false);}
 }
 function button(text,action) {const node=element('button',text);node.type='button';node.addEventListener('click',()=>run(action));return node;}
-function statusLabel(state) {return ({connected:'已连接',ready:'检测通过',empty:'检测通过',partial:'部分失败',failed:'读取失败',not_configured:'未添加公司'})[state] || '未连接';}
+function statusLabel(state) {return ({connected:'已连接',ready:'检测通过',detail:'读取成功',empty:'检测通过',partial:'部分失败',failed:'读取失败',not_configured:'未添加公司',
+  busy:'读取中',not_checked:'未检测',rate_limited:'限流中',login_required:'需登录',verification_required:'需验证'})[state] || '未连接';}
 function renderPlatforms(status) {
   const container=$('platforms');container.replaceChildren();
   const boss=element('article',undefined,'platform-card');boss.dataset.platform='boss';
@@ -18,6 +19,15 @@ function renderPlatforms(status) {
   actions.append(button('连接',async()=>{await api('open_login');notify('请在普通 Chrome 完成登录');}),
     button('检测',async()=>{const result=await api('check_platform',{platform:'boss'});await refresh(false);notify(statusLabel(result.state));}));
   boss.append(actions);container.append(boss);
+  const linked=element('article',undefined,'platform-card');linked.dataset.platform='linkedin';
+  linked.append(element('h3','LinkedIn'),element('p',statusLabel(status.linkedin.state),'platform-status'),element('p','公开页面实验接入','muted'));
+  if(status.linkedin.lastCheck)linked.append(element('p',new Date(status.linkedin.lastCheck.checkedAt).toLocaleString('zh-CN'),'muted'));
+  if(status.linkedin.retryAt)linked.append(element('p','可重试：'+new Date(status.linkedin.retryAt).toLocaleString('zh-CN'),'muted'));
+  const linkedActions=element('div',undefined,'job-actions'),open=element('a','打开原站','button');
+  open.href='https://www.linkedin.com/jobs/';open.target='_blank';open.rel='noopener noreferrer';
+  linkedActions.append(open,button('检测',async()=>{
+    const result=await api('check_platform',{platform:'linkedin'});await refresh(false);notify(result.message || statusLabel(result.state),!['ready','empty'].includes(result.state));
+  }));linked.append(linkedActions,element('p','遇到登录或验证时由本人处理','muted'));container.append(linked);
   for(const config of status.platforms) {
     const {platform,boards,lastCheck}=config,card=element('article',undefined,'platform-card');card.dataset.platform=platform;
     card.append(element('h3',platformName(platform)),element('p',lastCheck ? statusLabel(lastCheck.state) : boards.length ? '已配置' : '未添加公司','platform-status'));

@@ -21,7 +21,8 @@ test('settings cards configure and detect platforms; preferences, import and ran
     page.on('pageerror',error=>errors.push(error.message));
     const url=await app.dashboard.open();await page.route('**/*',route=>new URL(route.request().url()).origin===new URL(url).origin ? route.continue() : route.abort());
     await page.goto(url);await page.locator('#settings-link').click();await page.locator('.platform-card').last().waitFor();
-    assert.equal(await page.locator('.platform-card').count(),4);assert.equal(await page.locator('[data-platform="ashby"] .platform-status').textContent(),'未添加公司');
+    assert.deepEqual(await page.locator('.platform-card').evaluateAll(cards=>cards.map(card=>card.dataset.platform).sort()),['ashby','boss','greenhouse','lever','linkedin']);
+    assert.equal(await page.locator('[data-platform="ashby"] .platform-status').textContent(),'未添加公司');
     for(const platform of ['ashby','lever']) {
       await page.locator(`[data-platform="${platform}"] textarea`).fill(platform==='ashby' ? 'https://jobs.ashbyhq.com/sample' : 'https://jobs.eu.lever.co/sample');
       await page.locator(`[data-platform="${platform}"] button[type="submit"]`).click();await page.getByText('目标公司已保存',{exact:true}).waitFor();

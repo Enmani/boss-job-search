@@ -1,6 +1,6 @@
 ---
 name: boss-job-search
-description: 搜索 BOSS、Greenhouse、Ashby 和 Lever 岗位，导入其他岗位，按本机简历批量筛选排序，并用求职面板管理进度。用于求职场景。
+description: 搜索 BOSS、Greenhouse、Ashby、Lever 和 LinkedIn 岗位，导入其他岗位，按本机简历批量筛选排序，并用求职面板管理进度。LinkedIn 为公开页面实验接入。用于求职场景。
 ---
 
 使用本插件的 boss_job_search MCP 工具。profile 默认 personal；它隔离本机资料，网页使用已连接普通 Chrome 的 BOSS 账号。
@@ -17,11 +17,13 @@ search_jobs 的 platform 默认为 boss，传入实际关键词和 cityCode，�
 
 Greenhouse、Ashby、Lever 用 set_platform_boards 保存用户关注的公司招聘页，platform 为 greenhouse/ashby/lever。Greenhouse 也保留 set_greenhouse_boards。调用 search_jobs 的 query 匹配标题、公司与正文，location 匹配主地点和接口提供的其他地点；boardTokens 可限定本次公司。Lever 欧洲站传 https://jobs.eu.lever.co/公司标识。只覆盖配置公司，不是全网搜索。partial 检查 search.boards 的失败原因，failed 不能当作没有岗位。公开接口不需要 Chrome、登录或 API 密钥；check_platform 实际检测已配置公司，配置不等于检测通过。
 
-统一岗位保留 platform、platformJobId、boardToken、规范链接与 applyUrl，Lever 还保留 region。compensation 保留币种和周期，未知为 unknown，不换算海外薪资。Ashby、Lever 公司名称使用招聘页标识；不同平台相似岗位不会自动合并。
+LinkedIn 以 platform=linkedin、query、location 搜索免登录访客列表，无需 Chrome、公司配置或 API 密钥。pageOffset 默认0，继续搜索必须使用返回的 search.nextOffset，不猜固定页大小；最多偏移1000，单次 limit 最多30。它是公开页面实验接入，可能限流或要求登录；没有登录态读取器。LINKEDIN_RATE_LIMIT 后遵从 get_status.linkedin.retryAt，至少等待五分钟，不反复调用、不切换代理绕过。登录、验证、未知布局或身份不符均停止并报告，不能当作零岗位。check_platform 会发起一次真实样例读取，无需先检测再重复搜索。
+
+统一岗位保留 platform、platformJobId、boardToken、规范链接与 applyUrl，Lever 还保留 region。compensation 保留币种和周期，未知为 unknown，不换算海外薪资。LinkedIn 的 salary 仅存原文，不推算金额单位。Ashby、Lever 公司名称使用招聘页标识；不同平台相似岗位不会自动合并。旧通用导入中的已支持链接在重新搜索或导入时接续原记录；JOB_IDENTITY_CONFLICT 需核对重复记录，不自动删除或合并。
 
 get_status.browser 表示本机连接状态，不代表已登录 BOSS。出现 EXTENSION_NOT_CONNECTED 或 BRIDGE_NOT_CONFIGURED 时，按插件的本机安装说明恢复连接；不要切换到会触发空白页的调试接管。open_login 可打开普通 Chrome 的登录页，登录和验证码由本人完成，再重新搜索。网页布局未知、验证失败或空白页不能当作零岗位；只有 state=empty 才是网站明确没有结果。
 
-search_jobs 返回本地合并后的岗位，BOSS 的已有 description 可能来自此前读取。公开接口搜索读取完整正文，Greenhouse 薪资结构需用详情补齐。筛选前用 get_job_detail 刷新候选；只有 detail 表示此次读到所选完整正文。manual 平台返回 user_provided，只表示已提供的材料。无法识别的金额保持未知。
+search_jobs 返回本地合并后的岗位，BOSS 和 LinkedIn 的已有 description 可能来自此前读取。Greenhouse、Ashby、Lever 搜索读取完整正文，Greenhouse 薪资结构需用详情补齐。LinkedIn 列表没有完整正文。筛选前用 get_job_detail 刷新候选；只有 detail 表示此次读到所选完整正文。manual 平台返回 user_provided，只表示已提供的材料。无法识别的金额保持未知。
 
 import_visible_jobs 仅用于用户提供或其他已授权方式实际读取的岗位材料。observedQuery 只填页面实际关键词，该导入记录不证明 MCP 执行了搜索。
 
@@ -43,7 +45,7 @@ matches 同时引用岗位 jobQuote 与简历/事实 resumeQuote 原句，gaps �
 
 ## 求职进度
 
-用户要按钮或面板时调用 open_dashboard，并打开其返回的本机链接。首页可搜索、导入、筛选排序、读详情和记录进度；设置页并排列出四个平台状态和操作，管理目标公司、条件、默认简历与主题。新简历导入和语义判断在 Codex 中完成。链接仅供本机访问，服务退出后重新打开。get_saved_job 不访问网站。
+用户要按钮或面板时调用 open_dashboard，并打开其返回的本机链接。首页可搜索、导入、筛选排序、读详情和记录进度；设置页并排列出五个平台状态和操作，管理目标公司、条件、默认简历与主题。LinkedIn 有读取状态、冷却时间、“检测”和“打开原站”，无需账号连接。新简历导入和语义判断在 Codex 中完成。链接仅供本机访问，服务退出后重新打开。get_saved_job 不访问网站。
 
 list_jobs 查记录，get_progress_history 查历史。update_progress 只记录用户已发生或明确要求记录的动作；搜索或推荐不能标成已投递。每次更新生成 requestId UUID，重试同一操作复用它。followUpAt 为带时区的记录，不会自动提醒。
 

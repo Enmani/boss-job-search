@@ -10,8 +10,8 @@ profile 默认 personal，用于隔离本机资料。Chrome 连接来自本人�
 | open_dashboard | 启动本机求职面板，返回带临时访问凭据的链接 |
 | set_greenhouse_boards | 添加最多十个公司招聘页或 board token |
 | set_platform_boards | 为 greenhouse、ashby、lever 保存目标公司 |
-| check_platform | 检测 BOSS 本机连接或已配置公司的实际接口读取状态 |
-| search_jobs | boss 读取当前页；greenhouse、ashby、lever 搜索添加的公司 |
+| check_platform | 检测 BOSS 本机连接、已配置公司接口或 LinkedIn 访客页 |
+| search_jobs | boss 读取当前页；greenhouse、ashby、lever 搜索添加的公司；linkedin 实验读取访客列表 |
 | get_job_detail | 按 jobId 与所属平台读取完整详情并更新记录 |
 | get_saved_job | 查看已保存正文和进度历史，不访问网站 |
 | import_visible_jobs | 导入本人实际读取的岗位材料 |
@@ -31,7 +31,9 @@ profile 默认 personal，用于隔离本机资料。Chrome 连接来自本人�
 
 BOSS 搜索使用 query、cityCode、limit。公开接口使用 query、location、limit，可用 boardTokens 限定本次公司；未提供时使用该平台已保存的目标公司。关键词匹配标题、公司和正文，location 匹配地点文字。返回 ready、empty、partial 或 failed；search.boards 记录各公司数量或失败原因。Lever 欧洲站通过完整招聘页地址指定。
 
-list_jobs 支持 platform、status、query、resumeId、limit 与 offset。query 匹配标题、公司和地点。Greenhouse 与 BOSS 共用简历筛选、收藏和进度工具。
+LinkedIn 使用 platform=linkedin、query、location、limit，无需 boardTokens 或登录。pageOffset 默认0，上限1000，下一批使用 search.nextOffset；返回数可能少于 limit。搜索只读取列表，详情另用 get_job_detail。429抛出 LINKEDIN_RATE_LIMIT 并写入失败搜索记录，不保存为零岗位；get_status.linkedin 返回 state、retryAt、error 和 lastCheck。各平台共用简历筛选、收藏和进度工具。
+
+list_jobs 支持 platform、status、query、resumeId、limit 与 offset。query 匹配标题、公司和地点；这里的 offset 是本机记录分页，与 LinkedIn 的 pageOffset 分开。
 
 筛选写入时同时校验 jobRevision 与引用原文。岗位变更会令旧结论失效。更新进度使用 UUID requestId，重复提交同一操作不会生成重复事件。
 

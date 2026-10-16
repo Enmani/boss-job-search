@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { TaskError, jobSchema, preferencesSchema, assessmentSchema, validateEvidence, statuses } from './domain.mjs';
+import { TaskError, jobSchema, jobIdentity, knownJobIdentity, preferencesSchema, assessmentSchema, validateEvidence, statuses } from './domain.mjs';
 import { platformBoards } from './boards.mjs';
 
 const now = () => new Date().toISOString();
@@ -85,35 +85,52 @@ export class Store {
   }
   upsertJobs(inputs) {
     const jobs = inputs.map(value => jobSchema.parse(value));
-    return this.transaction(() => jobs.map(job => {
-      const row = this.db.prepare('SELECT * FROM jobs WHERE identity_key=?').get(this.identity(job));
-      const time = now();
-      if (row) {
-        const old = parse(row);
-        // List cards have shorter company/location labels and can have unreadable salaries.
-        // Preserve a complete snapshot; only explicit comparable list fields may update it.
-        let merged=job;
-        if(job.source === 'boss_search' || job.source === 'browser_import') {
-          merged={...job};
-          for(const field of ['company','location','salary','experience','degree']) {
-            if(!merged[field])merged[field]=old[field];
-          }
-          if(old.description) {
-            merged={...old,...Object.fromEntries(['title','salary','experience','degree'].map(field=>[field,job[field] || old[field]]))};
-          }
-        }
-        if(job.source === 'greenhouse_search' && !job.compensation.length && old.compensation.length)
-          merged={...merged,salary:old.salary,compensation:old.compensation,
-            rawText:[job.title,job.company,job.location,old.salary,job.description].filter(Boolean).join('\n')};
-        merged=jobSchema.parse(merged);
-        const payload = JSON.stringify(merged);
-        this.db.prepare('UPDATE jobs SET payload=?,revision=?,seen_at=? WHERE id=?').run(payload, row.revision + (content(merged) !== content(old) ? 1 : 0), time, row.id);
-        return this.job(row.id);
+    return this.transaction(() => {
+      // A newly supported platform can identify links imported as manual by older versions.
+      const legacy=new Map();
+      for(const row of this.db.prepare("SELECT * FROM jobs WHERE platform='manual'").all()) {
+        const identity=knownJobIdentity(parse(row).url);
+        if(!identity)continue;
+        const key=this.identity(identity),rows=legacy.get(key) || [];rows.push(row);legacy.set(key,rows);
       }
-      const id = randomUUID();
-      this.db.prepare('INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?)').run(id, job.url, JSON.stringify(job), 1, '待筛选', time, time,job.platform,this.identity(job));
-      return this.job(id);
-    }));
+      return jobs.map(job => {
+        const key=this.identity(job),candidates=legacy.get(key) || [];
+        const existing=this.db.prepare('SELECT * FROM jobs WHERE identity_key=?').get(key);
+        if(candidates.length>1 || (existing && candidates.some(row=>row.id!==existing.id)))
+          throw new TaskError('JOB_IDENTITY_CONFLICT','已有多个记录指向同一岗位，请先核对，未自动合并。');
+        const row = existing || candidates[0];
+        const time = now();
+        if (row) {
+          const old = parse(row);
+          // List cards have shorter company/location labels and can have unreadable salaries.
+          // Preserve a complete snapshot; only explicit comparable list fields may update it.
+          let merged=job;
+          if(['boss_search','browser_import','linkedin_search'].includes(job.source)) {
+            merged={...job};
+            for(const field of ['company','location','salary','experience','degree']) {
+              if(!merged[field])merged[field]=old[field];
+            }
+            if(old.description) {
+              const fields=job.source==='linkedin_search' ? ['title','company','location','salary','experience','degree'] : ['title','salary','experience','degree'];
+              merged={...old,...jobIdentity(job.url),...Object.fromEntries(fields.map(field=>[field,job[field] || old[field]]))};
+              if(job.source==='linkedin_search' && fields.some(field=>merged[field]!==old[field]))
+                merged.rawText=[merged.title,merged.company,merged.location,merged.salary,merged.experience,merged.degree,merged.description].filter(Boolean).join('\n');
+            }
+          }
+          if(job.source === 'greenhouse_search' && !job.compensation.length && old.compensation.length)
+            merged={...merged,salary:old.salary,compensation:old.compensation,
+              rawText:[job.title,job.company,job.location,old.salary,job.description].filter(Boolean).join('\n')};
+          merged=jobSchema.parse(merged);
+          const payload = JSON.stringify(merged);
+          this.db.prepare('UPDATE jobs SET payload=?,revision=?,seen_at=?,url=?,platform=?,identity_key=? WHERE id=?')
+            .run(payload,row.revision+(content(merged)!==content(old)?1:0),time,merged.url,merged.platform,this.identity(merged),row.id);
+          return this.job(row.id);
+        }
+        const id = randomUUID();
+        this.db.prepare('INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?)').run(id, job.url, JSON.stringify(job), 1, '待筛选', time, time,job.platform,this.identity(job));
+        return this.job(id);
+      });
+    });
   }
   job(id) {
     const row = this.db.prepare('SELECT * FROM jobs WHERE id=?').get(id);

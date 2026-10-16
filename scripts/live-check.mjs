@@ -63,7 +63,7 @@ try {
   page.on('pageerror',error=>errors.push(error.message));
   await page.goto(url);await page.locator('.job-card').first().waitFor();
   await page.locator('#settings-link').click();await page.locator('.platform-card').last().waitFor();
-  assert.equal(await page.locator('.platform-card').count(),4);
+  assert.deepEqual(await page.locator('.platform-card').evaluateAll(cards=>cards.map(card=>card.dataset.platform).sort()),['ashby','boss','greenhouse','lever','linkedin']);
   await page.locator('[data-platform="ashby"]').getByRole('button',{name:'检测',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('[data-platform="ashby"] .platform-status').textContent==='检测通过',{},{timeout:60000});
   for(const width of [1280,390]) {
