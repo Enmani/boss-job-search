@@ -54,7 +54,7 @@ LinkedIn 同一进程的请求间隔至少三秒；429后暂停至少五分钟�
 
 更新源码后重新执行 npm ci，并重新安装 Codex 插件。保持原 Chrome 扩展目录可以保留 ID；更新后刷新扩展。源码位置或 Node.js 路径变化时重新运行本机安装器。
 
-v0.3 沿用 user_version=2，无新 DDL；升级前可用 backup_records 保留快照。旧版不识别新增平台记录，回退源码前停止服务并恢复升级前快照。
+v0.4 沿用 user_version=2，无新 DDL；升级前可用 backup_records 保留快照。现有 protocol=1 的 BOSS 扩展继续兼容，使用 LinkedIn 无需刷新扩展。旧版不识别新增平台记录，回退源码前停止服务并恢复升级前快照。
 
 卸载时，在 Codex 插件页卸载“直聘求职”，在 Chrome 移除对应扩展，然后删除当前用户的 `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.boss_job_search.bridge` 注册项。桥接文件和求职资料位于数据根目录，按自己的保留需求处理；插件更新不会删除资料。
 

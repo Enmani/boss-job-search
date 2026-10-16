@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 · 2026-10-17
 
 新增 LinkedIn 公开页面实验接入，无需 Chrome 扩展或账号登录。
 

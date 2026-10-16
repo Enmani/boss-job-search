@@ -2,9 +2,7 @@
 
 在 Codex 或本机求职面板中搜索 BOSS 直聘、Greenhouse、Ashby、Lever 和 LinkedIn 岗位，导入其他来源的岗位，对照自己的简历筛选，并保存求职进度。
 
-**Windows 预览版 · v0.3.0 · MIT**。独立开源项目，与招聘平台无隶属关系。
-
-当前源码新增 LinkedIn 实验接入，尚未包含在 v0.3.0 发布包中。
+**Windows 预览版 · v0.4.0 · MIT**。LinkedIn 为公开页面实验接入。独立开源项目，与招聘平台无隶属关系。
 
 你可以在 Codex 下指令，也可以在求职面板点击搜索、导入、排序和记录进度。BOSS 使用普通 Chrome 的原生扩展；Greenhouse、Ashby、Lever 使用官方公开岗位接口；LinkedIn 读取免登录访客列表和公开详情页。两种入口共用本机 SQLite 资料。
 
@@ -67,7 +65,7 @@ codex plugin add boss-job-search@boss-job-search-local
 
 完整恢复与卸载说明见 [运行说明](docs/operations.md)。插件格式参考 [OpenAI 官方文档](https://developers.openai.com/plugins/build/plugins)。
 
-升级时更新源码、依赖与 Codex 插件，保留原资料目录。Chrome 扩展可在原目录更新并刷新，保留扩展 ID。v0.3 沿用 v0.2 的本机通信协议与数据库结构。
+升级时更新源码、依赖与 Codex 插件，保留原资料目录。Chrome 扩展可在原目录更新并刷新，保留扩展 ID。v0.4 沿用 protocol=1 与 user_version=2；从 v0.3 升级以使用 LinkedIn 时，无需刷新现有 BOSS 扩展。升级前可用 backup_records 保留资料快照。
 
 只使用公开岗位接口和求职面板时，可跳过 Chrome 扩展与本机通信安装。
 
